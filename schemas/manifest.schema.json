@@ -1,0 +1,241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/Manifest",
+  "definitions": {
+    "Manifest": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version of this manifest as `major.minor`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Custom-element tag. MUST be publisher-prefixed, lowercase, and contain at least one hyphen (validated by `lintTag`)."
+        },
+        "kind": {
+          "$ref": "#/definitions/ManifestKind",
+          "description": "What this artifact is."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name."
+        },
+        "publisher": {
+          "type": "string",
+          "description": "Publisher namespace prefix; unique within one registry."
+        },
+        "version": {
+          "type": "string",
+          "description": "SemVer of this artifact.",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "requiresContext": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ManifestContextRequirement"
+          },
+          "description": "Context slots the widget needs the host page to supply, keyed by slot name."
+        },
+        "supportsPages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Page-type globs this widget may be placed on (e.g. `\"dashboards.*\"`)."
+        },
+        "size": {
+          "$ref": "#/definitions/ManifestSize",
+          "description": "Grid footprint constraints."
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Capability"
+          },
+          "description": "Declared capabilities. The SDK enforces `min(user permissions, declared)`; a capability increase between versions re-triggers registry review."
+        },
+        "props": {
+          "type": "string",
+          "description": "Path to the JSON Schema for this widget's user-facing settings."
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ManifestRequirement"
+          },
+          "description": "Dependency DAG edges; the registry rejects cycles at publish."
+        },
+        "sharedScope": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Import-map ranges this widget expects the host to satisfy at resolve time. Omitted = a fully self-contained module graph."
+        },
+        "entry": {
+          "type": "string",
+          "description": "ES-module entry that registers the custom element; content-hashed."
+        },
+        "thumbnail": {
+          "type": "string",
+          "description": "Path to a thumbnail asset."
+        },
+        "pageType": {
+          "$ref": "#/definitions/PageTypeDescriptor",
+          "description": "Present when `kind` is `page-type` (core §3)."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "tag",
+        "kind",
+        "name",
+        "publisher",
+        "version",
+        "entry"
+      ],
+      "additionalProperties": false,
+      "description": "A widget/plugin manifest. Required fields identify and load the artifact (`formatVersion`, `tag`, `kind`, `name`, `publisher`, `version`, `entry`); the rest describe placement, capabilities, and dependencies."
+    },
+    "ManifestKind": {
+      "type": "string",
+      "enum": [
+        "widget",
+        "plugin",
+        "page-type",
+        "layout"
+      ],
+      "description": "What a manifest describes."
+    },
+    "ManifestContextRequirement": {
+      "type": "object",
+      "properties": {
+        "recordType": {
+          "type": "string",
+          "description": "Domain record type the slot must carry (e.g. `\"customer\"`)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One entry in `requiresContext`: the shape of a single context slot the widget needs the host page to supply. The full context-type grammar lives in `src/types/context` (issue #7); the manifest only needs the record-type key."
+    },
+    "ManifestSize": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "$ref": "#/definitions/GridSize",
+          "description": "Footprint the host uses when first placing the widget."
+        },
+        "min": {
+          "$ref": "#/definitions/GridSize",
+          "description": "Smallest footprint the widget may be resized to."
+        },
+        "max": {
+          "$ref": "#/definitions/GridSize",
+          "description": "Largest footprint the widget may be resized to."
+        }
+      },
+      "required": [
+        "default"
+      ],
+      "additionalProperties": false,
+      "description": "Grid footprint constraints for a widget."
+    },
+    "GridSize": {
+      "type": "array",
+      "minItems": 2,
+      "items": [
+        {
+          "type": "number",
+          "title": "columns"
+        },
+        {
+          "type": "number",
+          "title": "rows"
+        }
+      ],
+      "maxItems": 2,
+      "description": "A widget's grid footprint as `[columns, rows]` cells."
+    },
+    "Capability": {
+      "type": "object",
+      "properties": {
+        "api": {
+          "$ref": "#/definitions/CapabilityApi",
+          "description": "One of the v1 apis (see `CAPABILITY_APIS`)."
+        },
+        "scope": {
+          "type": "string",
+          "description": "Colon-delimited scope path, or omitted for an unscoped capability."
+        }
+      },
+      "required": [
+        "api"
+      ],
+      "additionalProperties": false,
+      "description": "The object form of a capability as it appears in a manifest's `capabilities` array. The string form `<api>[:<scope>]` is what `parseCapability` reads and `formatCapability` writes."
+    },
+    "CapabilityApi": {
+      "type": "string",
+      "enum": [
+        "records.read",
+        "records.write",
+        "net",
+        "events"
+      ],
+      "description": "One of the v1 capability apis."
+    },
+    "ManifestRequirement": {
+      "type": "object",
+      "properties": {
+        "tag": {
+          "type": "string",
+          "description": "Publisher-prefixed tag of the required artifact."
+        },
+        "range": {
+          "type": "string",
+          "description": "SemVer range the host must satisfy at resolve time."
+        }
+      },
+      "required": [
+        "tag",
+        "range"
+      ],
+      "additionalProperties": false,
+      "description": "One edge of the dependency DAG; the registry rejects cycles at publish."
+    },
+    "PageTypeDescriptor": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ManifestContextRequirement"
+          },
+          "description": "Context slots this page type provides, keyed by slot name."
+        },
+        "default_layout": {
+          "type": "string",
+          "description": "Tag or path of the layout applied to new instances of this page type."
+        },
+        "locks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Slot ids the page type pins so user customization cannot move or remove them."
+        },
+        "allow_user_customization": {
+          "type": "boolean",
+          "description": "Whether end users may add, move, or remove widgets on this page type."
+        }
+      },
+      "required": [
+        "context"
+      ],
+      "additionalProperties": false,
+      "description": "The descriptor carried when `kind` is `page-type` (core §3): the context this page type declares to the widgets placed on it, its default layout, the slots it locks, and whether end users may customize it."
+    }
+  }
+}

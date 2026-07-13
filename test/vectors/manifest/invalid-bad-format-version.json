@@ -1,0 +1,9 @@
+{
+  "formatVersion": "1",
+  "tag": "acme-sales-chart",
+  "kind": "widget",
+  "name": "Sales Chart",
+  "publisher": "acme",
+  "version": "2.3.1",
+  "entry": "widget.js"
+}

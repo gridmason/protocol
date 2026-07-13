@@ -30,16 +30,23 @@
     "./negotiate": {
       "types": "./dist/negotiate/index.d.ts",
       "import": "./dist/negotiate/index.js"
-    }
+    },
+    "./vectors": {
+      "types": "./dist/vectors/index.d.ts",
+      "import": "./dist/vectors/index.js"
+    },
+    "./schemas/manifest.json": "./schemas/manifest.schema.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "schemas"
   ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "npm run schemas && tsc -p tsconfig.build.json",
+    "schemas": "node scripts/gen-schemas.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -54,8 +61,11 @@
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@eslint/js": "10.0.1",
+    "@types/node": "22.10.5",
     "@vitest/coverage-v8": "4.1.10",
+    "ajv": "8.17.1",
     "eslint": "10.7.0",
+    "ts-json-schema-generator": "2.4.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.63.0",
     "vitest": "4.1.10"

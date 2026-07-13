@@ -1,0 +1,17 @@
+{
+  "formatVersion": "1.0",
+  "tag": "acme-sales-chart",
+  "kind": "widget",
+  "name": "Sales Chart",
+  "publisher": "acme",
+  "version": "2.3.1",
+  "requiresContext": { "record": { "recordType": "customer" } },
+  "supportsPages": ["crm.customer-detail", "dashboards.*"],
+  "size": { "default": [4, 3], "min": [2, 2], "max": [12, 8] },
+  "capabilities": [{ "api": "records.read", "scope": "recordType:customer" }],
+  "props": "schemas/sales-chart.json",
+  "requires": [{ "tag": "acme-chart-kit", "range": "^1.4.0" }],
+  "sharedScope": { "react": "^18", "@gridmason/sdk": "^1" },
+  "entry": "widget.js",
+  "thumbnail": "assets/sales-chart.png"
+}

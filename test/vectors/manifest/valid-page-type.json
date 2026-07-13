@@ -1,0 +1,15 @@
+{
+  "formatVersion": "1.0",
+  "tag": "acme-customer-detail",
+  "kind": "page-type",
+  "name": "Customer Detail",
+  "publisher": "acme",
+  "version": "1.0.0",
+  "entry": "page-type.js",
+  "pageType": {
+    "context": { "record": { "recordType": "customer" } },
+    "default_layout": "acme-customer-default",
+    "locks": ["header"],
+    "allow_user_customization": true
+  }
+}

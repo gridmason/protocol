@@ -5,3 +5,6 @@
  * Placeholder — no contract types yet; populated by the P-E1 (M0a) epic.
  */
 export {};
+
+export * from './identity.js';
+export * from './layout.js';

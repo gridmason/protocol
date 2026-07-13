@@ -2,6 +2,67 @@
 
 `@gridmason/protocol` — Gridmason contract types (widget manifest, page contexts, LayoutDoc) + signature / transparency-log / revocation-feed / trust-root formats + the public verification library. Everything else pins it (M0). Public OSS (AGPL-3.0). Engineering spec: `docs/SPEC.md` · Build plan: `docs/specs/protocol-v0/spec.md`.
 
+## Conformance vectors
+
+`@gridmason/protocol` ships the **type conformance vectors** for its Phase A
+contracts (manifest schema + tag/capability grammar, page-context subset,
+LayoutDoc migration) together with a runner, so every consumer — `core`, `cli`,
+`registry`, `dashboard` — proves the same behaviour in its own CI. A divergent
+implementation then fails a shared test rather than production (SPEC §6, §7).
+
+Run them from a downstream repo with **one import and one call**:
+
+```ts
+import { runConformanceVectors } from '@gridmason/protocol/vectors';
+import { expect, test } from 'vitest'; // or any test runner
+
+test('conforms to @gridmason/protocol type vectors', () => {
+  const report = runConformanceVectors();
+  expect(report.ok, report.failures).toBe(true);
+});
+```
+
+With no argument the runner tests `@gridmason/protocol`'s own exported functions.
+To test **your** implementation, pass a `ConformanceSurface` — every member is
+optional and falls back to the package's:
+
+```ts
+runConformanceVectors({
+  isContextSubset: myContextSubset,
+  lintTag: myLintTag,
+  migrate: myMigrate,
+});
+```
+
+The runner is framework-agnostic (it returns a report, it never calls a test
+framework), so advanced consumers can instead import the raw vector arrays
+(`manifestVectors`, `contextVectors`, `layoutVectors`, …) and drive one test case
+per vector.
+
+### Manifest schema validation (injected validator)
+
+The published package carries **zero runtime dependencies**, so it cannot bundle
+a JSON-Schema validator. For full manifest-schema fidelity, inject one compiled
+against the shipped schema — for example with `ajv`, which you already have as a
+dev dependency:
+
+```ts
+import { Ajv } from 'ajv';
+import manifestSchema from '@gridmason/protocol/schemas/manifest.json' with { type: 'json' };
+
+const validate = new Ajv({ strict: false }).compile(manifestSchema);
+runConformanceVectors({ validateManifest: (m) => validate(m) === true });
+```
+
+When `validateManifest` is omitted the runner uses `defaultValidateManifest`, a
+minimal dependency-free structural check (required fields, the `formatVersion` /
+`version` patterns, the `kind` enum, no unknown top-level keys) — enough to run
+zero-config, but inject `ajv` for the authoritative schema.
+
+> Phase A ships the **type** vectors above. The security **wire-format**
+> negatives (tampered hash, wrong issuer, expired root, forked log, stale feed)
+> are added in Phase B (FR-15, P-E2 / P-E4) to the same corpus and runner.
+
 ## Releasing
 
 Versioning and publishing are driven by [changesets](https://github.com/changesets/changesets). The package ships ESM + type declarations under SemVer 0.x, publishing to npm as `@gridmason/protocol`.

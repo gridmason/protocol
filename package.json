@@ -31,6 +31,10 @@
       "types": "./dist/negotiate/index.d.ts",
       "import": "./dist/negotiate/index.js"
     },
+    "./vectors": {
+      "types": "./dist/vectors/index.d.ts",
+      "import": "./dist/vectors/index.js"
+    },
     "./schemas/manifest.json": "./schemas/manifest.schema.json"
   },
   "files": [

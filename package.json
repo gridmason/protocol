@@ -1,6 +1,6 @@
 {
   "name": "@gridmason/protocol",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Gridmason contracts + verification library: the types, wire formats, and pure verify core every host, CLI, and registry meet on.",
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -35,6 +35,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -42,9 +45,14 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "prepublishOnly": "npm run build",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "@eslint/js": "10.0.1",
     "@vitest/coverage-v8": "4.1.10",
     "eslint": "10.7.0",

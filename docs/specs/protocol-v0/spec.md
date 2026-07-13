@@ -176,3 +176,17 @@ Depends on: P-E3
 ## Changelog
 
 - 2026-07-13 — initial draft from the approved engineering spec set (Phase A+B per user direction).
+
+## Issue map
+
+Created in `gridmason/protocol` from this spec package (`<!-- spec:protocol-v0 -->`). Phase A sub-issues are `status:ready`; Phase B epics + sub-issues are `status:blocked` (milestone-gated until Phase A exit / M-A release).
+
+| Epic | Issue | Phase | Sub-issues |
+|---|---|---|---|
+| P-E0 Bootstrap | #1 | A | #2 Repo scaffold · #3 Release pipeline · #4 Community files |
+| P-E1 Contract types | #5 | A | #6 Manifest types · #7 Page-context types · #8 LayoutDoc types + migrators · #9 POC importer migrator · #10 Type conformance vectors |
+| P-E2 Canonicalization + hashing | #11 | B | #12 RFC-8785 canonicalization · #13 Content hash + multihash + release map · #14 Wire-format vector harness |
+| P-E3 Wire formats + verify lib | #15 | B | #16 Signature envelope + dual-sig · #17 Transparency-log proofs · #18 Revocation feed + evaluateFreshness · #19 Trust-root parsing + rotation · #20 verifyRelease/verifyChunk orchestration |
+| P-E4 Bundles + negotiation | #21 | B | #22 .gmb bundle + offline verify · #23 negotiate() + policy · #24 Negative-vector sweep + coverage audit |
+
+Epic dependency chain (same-repo): #1 → #5 → #11 → #15 → #21. Sub-issue dependencies wired via `Depends on #n`: #3,#4→#2; #9→#8; #10→#6,#7,#8; #13→#12; #14→#13; #20→#16,#17,#18,#19; #22→#20; #24→#20.

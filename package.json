@@ -43,7 +43,8 @@
       "types": "./dist/vectors/index.d.ts",
       "import": "./dist/vectors/index.js"
     },
-    "./schemas/manifest.json": "./schemas/manifest.schema.json"
+    "./schemas/manifest.json": "./schemas/manifest.schema.json",
+    "./schemas/revocation-feed.json": "./schemas/revocation-feed.schema.json"
   },
   "files": [
     "dist",

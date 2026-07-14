@@ -8,6 +8,11 @@ import {
   generateManifestSchema,
   serializeSchema,
 } from './manifest-schema.mjs';
+import {
+  REVOCATION_SCHEMA_PATH,
+  generateRevocationSchema,
+} from './revocation-schema.mjs';
 
 mkdirSync(path.dirname(MANIFEST_SCHEMA_PATH), { recursive: true });
 writeFileSync(MANIFEST_SCHEMA_PATH, serializeSchema(generateManifestSchema()));
+writeFileSync(REVOCATION_SCHEMA_PATH, serializeSchema(generateRevocationSchema()));

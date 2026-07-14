@@ -39,6 +39,31 @@ framework), so advanced consumers can instead import the raw vector arrays
 (`manifestVectors`, `contextVectors`, `layoutVectors`, …) and drive one test case
 per vector.
 
+### The security wire-format negatives (async)
+
+The full SPEC §7 negative set — **tampered hash, wrong issuer, expired root,
+forked log, stale-past-TTL feed** — ships as published vectors too, so a consumer
+that "passes" a tampered vector fails its own CI. The signature and log groups use
+WebCrypto and are therefore async: use `runConformanceVectorsAsync`, which runs
+the full corpus (the sync groups plus `hash-wire`, `signature`, and
+`log-consistency`) in one import:
+
+```ts
+import { runConformanceVectorsAsync } from '@gridmason/protocol/vectors';
+
+test('conforms to @gridmason/protocol conformance vectors', async () => {
+  const report = await runConformanceVectorsAsync();
+  expect(report.ok, report.failures).toBe(true);
+});
+```
+
+Pass a `ConformanceSurface` to test your own verifiers (`verifySignatureEnvelope`,
+`evaluateTrustRoot`, `verifyLogConsistency`, `evaluateFreshness`, `verifyHash`), or
+import the raw arrays (`signatureVectors`, `trustRootVectors`,
+`logConsistencyVectors`, `freshnessVectors`, `hashWireVectors`) to drive one case
+per vector. All vectors are recorded fixtures — no network, no key handling — and
+versioned by format major (SPEC §6).
+
 ### Manifest schema validation (injected validator)
 
 The published package carries **zero runtime dependencies**, so it cannot bundle
@@ -59,9 +84,10 @@ minimal dependency-free structural check (required fields, the `formatVersion` /
 `version` patterns, the `kind` enum, no unknown top-level keys) — enough to run
 zero-config, but inject `ajv` for the authoritative schema.
 
-> Phase A ships the **type** vectors above. The security **wire-format**
-> negatives (tampered hash, wrong issuer, expired root, forked log, stale feed)
-> are added in Phase B (FR-15, P-E2 / P-E4) to the same corpus and runner.
+> Phase A ships the **type** vectors; Phase B completes the security
+> **wire-format** negatives (tampered hash, wrong issuer, expired root, forked
+> log, stale feed) in the same corpus and runner (FR-15, P-E2 / P-E4). The whole
+> set is now published — see the async runner above.
 
 ## Format lifecycle: negotiation & dual-running
 

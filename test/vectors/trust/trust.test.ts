@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { evaluateTrustRoot } from '../../../src/verify/trust/index.js';
-import { trustRootVectors } from './scenarios.js';
+import { trustRootVectors } from '../../../src/vectors/trust.js';
 
 // SPEC §4.4/§5 (FR-12): the shipped trust-root scenarios must reproduce exactly on
 // this package's own `evaluateTrustRoot`. Exhaustive branch/edge coverage lives in

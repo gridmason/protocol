@@ -16,7 +16,7 @@
  * (P-E2 / P-E4) — see the extension note in `runner.ts`.
  */
 
-import type { ContextMap } from '../types/context.js';
+import type { ContextMap, PageContext } from '../types/context.js';
 import type {
   MigrateOptions,
   MigrateResult,
@@ -53,6 +53,7 @@ export interface ConformanceSurface {
   readonly parseCapability?: (input: string) => CapabilityParseResult;
   readonly validateCapability?: (capability: Capability) => CapabilityError | undefined;
   readonly isContextSubset?: (requiresContext: ContextMap, pageContext: ContextMap) => boolean;
+  readonly matchesContextMap?: (context: PageContext, contextMap: ContextMap) => boolean;
   readonly migrate?: (doc: VersionedLayout, options: MigrateOptions) => MigrateResult;
   readonly validateManifest?: (manifest: unknown) => boolean;
 }
@@ -102,6 +103,17 @@ export interface ContextVector {
   readonly requires: ContextMap;
   readonly page: ContextMap;
   readonly subset: boolean;
+}
+
+/**
+ * A page-context value-conformance vector: does the runtime `context` satisfy
+ * the declared `contextMap`? Drives {@link import('../types/context.js').matchesContextMap}.
+ */
+export interface ContextValueVector {
+  readonly name: string;
+  readonly context: PageContext;
+  readonly contextMap: ContextMap;
+  readonly matches: boolean;
 }
 
 /** Expected outcome of a {@link LayoutVector}. */

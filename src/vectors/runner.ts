@@ -16,7 +16,7 @@
  * verify members to {@link ConformanceSurface} — the report shape does not change.
  */
 
-import { isContextSubset } from '../types/context.js';
+import { isContextSubset, matchesContextMap } from '../types/context.js';
 import { MigratorRegistry, migrate } from '../types/layout.js';
 import type { MigrateOptions } from '../types/layout.js';
 import { parseCapability, validateCapability } from '../types/manifest/capability.js';
@@ -28,7 +28,7 @@ import {
   manifestVectors,
   tagVectors,
 } from './manifest.js';
-import { contextVectors } from './context.js';
+import { contextValueVectors, contextVectors } from './context.js';
 import { layoutVectors } from './layout.js';
 import type { ConformanceReport, ConformanceSurface, VectorResult } from './types.js';
 
@@ -46,6 +46,7 @@ export function runConformanceVectors(surface: ConformanceSurface = {}): Conform
   const parseCap = surface.parseCapability ?? parseCapability;
   const validateCap = surface.validateCapability ?? validateCapability;
   const subset = surface.isContextSubset ?? isContextSubset;
+  const matchMap = surface.matchesContextMap ?? matchesContextMap;
   const migrateFn = surface.migrate ?? migrate;
   const validateManifest = surface.validateManifest ?? defaultValidateManifest;
 
@@ -77,6 +78,11 @@ export function runConformanceVectors(surface: ConformanceSurface = {}): Conform
   for (const v of contextVectors) {
     const actual = subset(v.requires, v.page);
     results.push(record('context-subset', v.name, actual === v.subset, `expected subset=${v.subset}, got ${actual}`));
+  }
+
+  for (const v of contextValueVectors) {
+    const actual = matchMap(v.context, v.contextMap);
+    results.push(record('context-match', v.name, actual === v.matches, `expected matches=${v.matches}, got ${actual}`));
   }
 
   for (const v of layoutVectors) {

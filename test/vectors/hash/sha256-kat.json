@@ -1,0 +1,38 @@
+[
+  {
+    "name": "empty",
+    "note": "zero-length input",
+    "inputHex": "",
+    "expected": "sha2-256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "name": "abc",
+    "note": "FIPS 180-2 Appendix B.1 one-block message",
+    "inputUtf8": "abc",
+    "expected": "sha2-256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  {
+    "name": "two-block-448",
+    "note": "FIPS 180-2 Appendix B.2 two-block, 448-bit message",
+    "inputUtf8": "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
+    "expected": "sha2-256:248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1"
+  },
+  {
+    "name": "two-block-896",
+    "note": "FIPS 180-4 CSRC example, 896-bit message",
+    "inputUtf8": "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
+    "expected": "sha2-256:cf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1"
+  },
+  {
+    "name": "raw-byte-00",
+    "note": "single 0x00 byte — exercises a non-UTF-8 raw byte input and leading-zero hex",
+    "inputHex": "00",
+    "expected": "sha2-256:6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+  },
+  {
+    "name": "raw-bytes-deadbeef",
+    "note": "arbitrary 4-byte binary input",
+    "inputHex": "deadbeef",
+    "expected": "sha2-256:5f78c33274e43fa9de5659265c1d917e25c03722dcb0b8d27db8d5feaa813953"
+  }
+]

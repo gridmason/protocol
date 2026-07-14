@@ -5,6 +5,7 @@
  * no I/O. The security core of the platform: held at 100% coverage (GW-D20 gate,
  * see vitest.config.ts).
  *
- * Placeholder — no verification code yet; populated by the P-E3 epic.
+ * Content hashing (§4.1) has landed; signature/log/trust-root/freshness checks
+ * are populated by the P-E3 epic.
  */
-export {};
+export * from './hash/index.js';

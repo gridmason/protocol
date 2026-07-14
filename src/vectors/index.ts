@@ -28,9 +28,15 @@ export {
   tagVectors,
 } from './manifest.js';
 export { contextValueVectors, contextVectors } from './context.js';
+export {
+  capabilityGrantVectors,
+  devProxyRequestVectors,
+  devProxyResponseVectors,
+} from './dev-proxy.js';
 export { layoutVectors } from './layout.js';
 
 export type {
+  CapabilityGrantVector,
   CapabilityObjectVector,
   CapabilityStringExpectation,
   CapabilityStringVector,
@@ -38,6 +44,8 @@ export type {
   ConformanceSurface,
   ContextValueVector,
   ContextVector,
+  DevProxyRequestVector,
+  DevProxyResponseVector,
   LayoutExpectation,
   LayoutVector,
   ManifestVector,

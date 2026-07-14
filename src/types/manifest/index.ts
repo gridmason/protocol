@@ -25,6 +25,7 @@ export type {
 export {
   CAPABILITY_APIS,
   formatCapability,
+  grantsCapability,
   parseCapability,
   validateCapability,
 } from './capability.js';

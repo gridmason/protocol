@@ -17,9 +17,10 @@
  */
 
 import { isContextSubset, matchesContextMap } from '../types/context.js';
+import { isDevProxySdkRequest, isDevProxySdkResponse } from '../types/dev-proxy.js';
 import { MigratorRegistry, migrate } from '../types/layout.js';
 import type { MigrateOptions } from '../types/layout.js';
-import { parseCapability, validateCapability } from '../types/manifest/capability.js';
+import { grantsCapability, parseCapability, validateCapability } from '../types/manifest/capability.js';
 import { lintTag } from '../types/manifest/tag.js';
 import {
   capabilityObjectVectors,
@@ -29,6 +30,11 @@ import {
   tagVectors,
 } from './manifest.js';
 import { contextValueVectors, contextVectors } from './context.js';
+import {
+  capabilityGrantVectors,
+  devProxyRequestVectors,
+  devProxyResponseVectors,
+} from './dev-proxy.js';
 import { layoutVectors } from './layout.js';
 import type { ConformanceReport, ConformanceSurface, VectorResult } from './types.js';
 
@@ -49,6 +55,9 @@ export function runConformanceVectors(surface: ConformanceSurface = {}): Conform
   const matchMap = surface.matchesContextMap ?? matchesContextMap;
   const migrateFn = surface.migrate ?? migrate;
   const validateManifest = surface.validateManifest ?? defaultValidateManifest;
+  const grants = surface.grantsCapability ?? grantsCapability;
+  const isProxyRequest = surface.isDevProxySdkRequest ?? isDevProxySdkRequest;
+  const isProxyResponse = surface.isDevProxySdkResponse ?? isDevProxySdkResponse;
 
   for (const v of manifestVectors) {
     const actual = validateManifest(v.manifest);
@@ -73,6 +82,21 @@ export function runConformanceVectors(surface: ConformanceSurface = {}): Conform
   for (const v of capabilityObjectVectors) {
     const actual = validateCap(v.capability);
     results.push(record('capability-object', v.name, actual === v.error, `expected error=${String(v.error)}, got ${String(actual)}`));
+  }
+
+  for (const v of capabilityGrantVectors) {
+    const actual = grants(v.declared, v.required);
+    results.push(record('capability-grant', v.name, actual === v.grants, `expected grants=${v.grants}, got ${actual}`));
+  }
+
+  for (const v of devProxyRequestVectors) {
+    const actual = isProxyRequest(v.value);
+    results.push(record('dev-proxy-request', v.name, actual === v.valid, `expected valid=${v.valid}, got ${actual}`));
+  }
+
+  for (const v of devProxyResponseVectors) {
+    const actual = isProxyResponse(v.value);
+    results.push(record('dev-proxy-response', v.name, actual === v.valid, `expected valid=${v.valid}, got ${actual}`));
   }
 
   for (const v of contextVectors) {

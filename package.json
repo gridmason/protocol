@@ -48,7 +48,9 @@
     "./schemas/revocation-feed.json": "./schemas/revocation-feed.schema.json",
     "./schemas/log-entry.json": "./schemas/log-entry.schema.json",
     "./schemas/trust-root.json": "./schemas/trust-root.schema.json",
-    "./schemas/gmb-bundle.json": "./schemas/gmb-bundle.schema.json"
+    "./schemas/gmb-bundle.json": "./schemas/gmb-bundle.schema.json",
+    "./schemas/gate-snapshot.json": "./schemas/gate-snapshot.schema.json",
+    "./schemas/import-map-fragment.json": "./schemas/import-map-fragment.schema.json"
   },
   "files": [
     "dist",

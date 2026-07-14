@@ -1,0 +1,13 @@
+{
+  "registry": "registry.gridmason.dev",
+  "modules": [
+    { "publisher": "acme", "tag": "acme-chart", "version": "2.3.1" },
+    { "publisher": "acme", "tag": "acme-map", "version": "0.9.0" }
+  ],
+  "shared": {
+    "react": [
+      { "major": 18, "url": "/vendor/react@18.js" },
+      { "major": 17, "url": "/vendor/react@17.js" }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "registry": "registry.gridmason.dev",
+  "modules": [],
+  "shared": {
+    "react": [{ "major": 18.5, "url": "/vendor/react@18.js" }]
+  }
+}

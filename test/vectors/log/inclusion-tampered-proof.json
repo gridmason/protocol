@@ -1,0 +1,16 @@
+{
+  "logId": "e76604b23bcf585db509e04e004493783d40ca603611f2e566d22bf62bf983a1",
+  "index": 3,
+  "integratedTime": 1700000000,
+  "canonicalBody": "Z3JpZG1hc29uIGVudHJ5IDM=",
+  "inclusionProof": {
+    "treeSize": 8,
+    "rootHash": "2f79d15e9cb5af0ba446eb17d013f8c3f73cfb6b5643bc4e72f026f4e7389d54",
+    "hashes": [
+      "dc07b00a8650d93355e3832e3089a0061e8233708508fdd3f9f8738e1a3c36d9",
+      "c906076f1a32216abaea4747fb9bc9ab68c89e3237c90aaebc1604c0d94b7597",
+      "5252d6afdf8aef6787ff657136f76f87562602d7836cf9b2c32a6085046abcb0"
+    ]
+  },
+  "checkpoint": "gridmason.test/log\n8\nL3nRXpy1rwukRusX0BP4w/c8+2tWQ7xOcvAm9Oc4nVQ=\n\n— gridmason.test/log FgRm46ytc1tmNups0fT9aRsjJQC7Bl+t8tl/NbnxPR4gj+wr2oJ1n/b+9jX1c+9Tp1ru+sr14wJgwVOjaCbt6hQ4ZQk=\n"
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/TrustRootDoc",
+  "definitions": {
+    "TrustRootDoc": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version of this document as `major.minor`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "registryId": {
+          "type": "string",
+          "description": "Identity of the registry this document establishes roots for (e.g. `\"registry.gridmason.dev\"`)."
+        },
+        "countersignRoots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The registry's countersign root(s) — the roots that anchor its approval (`registrySig`) signatures. Ordered; opaque identifiers (a key id / cert / fingerprint) matched verbatim against the operator's pins. Normally one root; during a rotation overlap it lists **both** the outgoing and incoming roots so a host pinned to either still matches (see  {@link  crossSig } )."
+        },
+        "publisherCARoots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Publisher CA roots for the issued-cert authorship path (SPEC §4.4, optional). Absent when the registry only anchors authorship through the keyless OIDC path ( {@link  issuerAllowlist } )."
+        },
+        "issuerAllowlist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The OIDC issuer origins the registry accepts as authorship trust anchors (SPEC §4.2 — \"the OIDC issuer is the trust anchor for the publisher side\"). A publisher signature whose issuer is not on this list is not anchored. May be empty for a registry that uses only the issued-cert path."
+        },
+        "logPublicKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The transparency-log public keys (opaque encoded strings) a host pins log inclusion proofs against (SPEC §4.3). May be empty for a registry that does not operate a log."
+        },
+        "notBefore": {
+          "type": "integer",
+          "description": "Start of the document's validity window, in **epoch milliseconds**. A host whose `now` is before this instant refuses the document as not-yet-valid."
+        },
+        "notAfter": {
+          "type": "integer",
+          "description": "End of the document's validity window, in **epoch milliseconds**. A host whose `now` is past this instant refuses the document as expired. Must be `>=`  {@link  notBefore } ."
+        },
+        "crossSig": {
+          "type": "string",
+          "description": "The outgoing root's signature over this document, present only during a rotation overlap to bind the incoming root to the one it succeeds (SPEC §4.4). Absent outside a rotation. This module carries it through structurally; verifying it cryptographically is the signature primitive's job, composed in `verifyRelease` (#20)."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "registryId",
+        "countersignRoots",
+        "issuerAllowlist",
+        "logPublicKeys",
+        "notBefore",
+        "notAfter"
+      ],
+      "additionalProperties": false,
+      "description": "A signed trust-root document for one registry (docs/SPEC.md §4.4). Every field is authored here and schema-generated (FR-5). A host receives this document already signature-verified and matches it against its out-of-band pins."
+    }
+  }
+}

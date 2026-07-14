@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/TransparencyLogEntry",
+  "definitions": {
+    "TransparencyLogEntry": {
+      "type": "object",
+      "properties": {
+        "logId": {
+          "type": "string",
+          "description": "Log identity — the hex SHA-256 of the log's public key. Names *which* log; the caller maps it to a pinned key. Non-load-bearing for the Merkle math.",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "index": {
+          "type": "number",
+          "description": "Zero-based leaf index of this entry within the tree of `inclusionProof.treeSize`."
+        },
+        "integratedTime": {
+          "type": "number",
+          "description": "Unix seconds at which the log integrated the entry. Carried, not verified here."
+        },
+        "canonicalBody": {
+          "type": "string",
+          "description": "The exact bytes that were logged as this leaf, base64. The leaf hash is `SHA-256(0x00 || canonicalBody)` (RFC 6962 leaf hashing).",
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        },
+        "inclusionProof": {
+          "$ref": "#/definitions/LogInclusionProof",
+          "description": "RFC 6962 audit path proving `canonicalBody` is the leaf at `index`."
+        },
+        "checkpoint": {
+          "type": "string",
+          "description": "The log's signed tree head as a c2sp.org/tlog-checkpoint signed note: `origin`, `treeSize`, and base64 root on their own lines, followed by a blank line and one or more `— <name> <base64>` signature lines. The verify lib checks the signature against the pinned log key before trusting the root."
+        }
+      },
+      "required": [
+        "logId",
+        "index",
+        "integratedTime",
+        "canonicalBody",
+        "inclusionProof",
+        "checkpoint"
+      ],
+      "additionalProperties": false,
+      "description": "A Sigstore/Rekor-compatible transparency-log entry (docs/SPEC.md §4.3). Proves the logged `canonicalBody` sits at leaf `index` of a log whose signed tree head is `checkpoint`."
+    },
+    "LogInclusionProof": {
+      "type": "object",
+      "properties": {
+        "treeSize": {
+          "type": "number",
+          "description": "Number of leaves in the tree this proof leads to the root of."
+        },
+        "rootHash": {
+          "type": "string",
+          "description": "The Merkle tree root at `treeSize`, lowercase hex. Advisory: the verify lib checks the recomputed root against the **signed checkpoint** root, and requires this field to agree with it (a self-consistent entry).",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "hashes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Sibling node hashes of the audit path, leaf-to-root, each a lowercase-hex SHA-256 digest. The array length is fixed by `index` and `treeSize` (RFC 6962); the verify lib enforces the hex/length of each element."
+        }
+      },
+      "required": [
+        "treeSize",
+        "rootHash",
+        "hashes"
+      ],
+      "additionalProperties": false,
+      "description": "An RFC 6962 inclusion proof: the Merkle audit path from a leaf up to the tree root at `treeSize`. `hashes` are the sibling node hashes, ordered leaf-to-root; the verify lib recomputes the root from the leaf and this path and compares it to the root the signed  {@link  TransparencyLogEntry.checkpoint }  commits to."
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "oldCheckpoint": "gridmason.test/log\n5\nz5vWlr1cNhBVhV5doYfY8+jMlRMlPjYa5q9bSDH7Y0k=\n\n— gridmason.test/log FgRm4+bgiQqj+UdXDx4hJqXGKF7hx9/nwYUbq1NhPOsrmp3gfOgKlzPMDSscScrMrJF822bZsA3vmNPPq2mJbR/h5gQ=\n",
+  "newCheckpoint": "gridmason.test/other\n8\nL3nRXpy1rwukRusX0BP4w/c8+2tWQ7xOcvAm9Oc4nVQ=\n\n— gridmason.test/log FgRm480aLqKMxjWoQzc/L+aiUZKC+Qs13H1mk35JNXdLJ9LzQ3x/lvvViVr88StMCdVCnq4fcFtdbrteGjoBdo8XKA0=\n",
+  "proof": [
+    "4763094e6b09f7446c57750ad8256f67240d69411f825643624d9411b5fb71e3",
+    "6df4f9f12af286ac104e319068051e15f1cf5b4eaaf8d9812bd9e0295e0513d1",
+    "718f3e96617b9166338320658e03819076c2806f37747779fbd863ea205780b4",
+    "4665508bc23144d0fac8cc908a09de3627559f59c19594e7cbe3d2d10c1e596a"
+  ]
+}

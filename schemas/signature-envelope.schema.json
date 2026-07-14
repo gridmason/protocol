@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/SignatureEnvelope",
+  "definitions": {
+    "SignatureEnvelope": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version as `major.minor`. Minor is additive/back-compatible, major is breaking. This module speaks major `1`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "subject": {
+          "$ref": "#/definitions/SignatureSubject",
+          "description": "The artifact and release-hash the signatures cover."
+        },
+        "publisherSig": {
+          "$ref": "#/definitions/PublisherSignature",
+          "description": "Publisher (authorship) signature — Sigstore keyless."
+        },
+        "registrySig": {
+          "$ref": "#/definitions/RegistryCountersignature",
+          "description": "Registry (approval) countersignature — present once review has passed."
+        },
+        "logInclusion": {
+          "$ref": "#/definitions/LogInclusion",
+          "description": "Transparency-log inclusion transport (verified elsewhere, FR-13)."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "subject",
+        "publisherSig",
+        "logInclusion"
+      ],
+      "additionalProperties": false,
+      "description": "The detached dual-signature envelope over a canonicalized release document (docs/SPEC.md §4.2). Consumed by  {@link  import ('../../verify/signature/index.js').verifySignatureEnvelope }  and, above it, by the `verifyRelease` orchestrator (FR-14)."
+    },
+    "SignatureSubject": {
+      "type": "object",
+      "properties": {
+        "artifact": {
+          "type": "string",
+          "description": "Publisher-prefixed, version-qualified artifact id, e.g. `acme-chart@2.3.1`."
+        },
+        "releaseHash": {
+          "$ref": "#/definitions/MultihashString",
+          "description": "Multihash-tagged content hash of the canonicalized release document (`sha2-256:<hex>`), the same encoding `src/verify/hash` produces."
+        }
+      },
+      "required": [
+        "artifact",
+        "releaseHash"
+      ],
+      "additionalProperties": false,
+      "description": "What the envelope is *about*: the exact artifact and the content hash of its canonicalized release document. The signatures cover this object (see  {@link  SignatureEnvelope } ); the verifier additionally re-derives the hash from the supplied release bytes so a matching signature over a lying `subject` is still refused."
+    },
+    "MultihashString": {
+      "type": "string",
+      "description": "A multihash-tagged content hash: the algorithm prefix followed by the digest. Today only `sha2-256:<hex>` is produced and accepted; the template keeps the type honest about the in-band tag. This is a shape hint, not a validity proof — an arbitrary `sha2-256:` string still satisfies it, so untrusted values are validated by  {@link  verifyHash }  rather than by the type alone."
+    },
+    "PublisherSignature": {
+      "type": "object",
+      "properties": {
+        "alg": {
+          "$ref": "#/definitions/SignatureAlg",
+          "description": "Signature algorithm; `ES256` at format `1.x`."
+        },
+        "cert": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the DER-encoded X.509 short-lived certificate."
+        },
+        "issuer": {
+          "type": "string",
+          "description": "OIDC issuer the publisher authenticated to (e.g. `https://accounts.google.com`). The trust anchor for the publisher side; the verifier requires it to equal the issuer the certificate attests and to be on the registry's issuer allowlist (recorded in the trust root, §4.4)."
+        },
+        "subjectClaims": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Identity claims the OIDC issuer asserted (e.g. `{ email: \"dev@acme.com\" }`), bound into the certificate's subject-alternative name. The verifier requires these to match the certificate."
+        },
+        "sig": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the raw ECDSA signature in IEEE-P1363 form (`r || s`, 64 bytes for P-256) over the canonical bytes of  {@link  SignatureSubject } ."
+        }
+      },
+      "required": [
+        "alg",
+        "cert",
+        "issuer",
+        "subjectClaims",
+        "sig"
+      ],
+      "additionalProperties": false,
+      "description": "The publisher (authorship) signature — Sigstore keyless. `cert` is a short-lived certificate binding a public key to an OIDC identity; the verifier extracts the issuer and identity **from the certificate**, so the `issuer`/`subjectClaims` mirrored here are convenience transport that must\n*match* the certificate — a mismatch is refused, never trusted."
+    },
+    "SignatureAlg": {
+      "type": "string",
+      "const": "ES256",
+      "description": "Signature algorithm identifier. Only `ES256` (ECDSA over NIST P-256 with SHA-256) is produced and accepted at format `1.x`; it is a string union rather than a bare `string` so the schema pins the accepted set and an unknown algorithm is a typed refusal, not a silent pass. Additional algorithms (e.g. `EdDSA`) are a future additive (minor) format bump."
+    },
+    "RegistryCountersignature": {
+      "type": "object",
+      "properties": {
+        "alg": {
+          "$ref": "#/definitions/SignatureAlg",
+          "description": "Signature algorithm; `ES256` at format `1.x`."
+        },
+        "cert": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the DER-encoded X.509 countersign certificate."
+        },
+        "sig": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the raw ECDSA signature in IEEE-P1363 form over the publisher signature's raw bytes (the countersigned value)."
+        }
+      },
+      "required": [
+        "alg",
+        "cert",
+        "sig"
+      ],
+      "additionalProperties": false,
+      "description": "The registry (approval) countersignature — applied only after registry review passes, with the countersign key held separately from review staff. It signs the publisher signature it approved, so approval is bound to that exact publisher signature. Optional on the wire: a published-but-not-yet-approved release has a `publisherSig` and no `registrySig`; the verifier refuses that with a distinct reason."
+    },
+    "LogInclusion": {
+      "type": "object",
+      "properties": {
+        "logId": {
+          "type": "string",
+          "description": "Identifier of the transparency log the entry lives in."
+        },
+        "index": {
+          "type": "number",
+          "description": "Zero-based leaf index of the entry."
+        },
+        "proof": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Merkle inclusion-proof hashes (base64), audited by the log-inclusion check."
+        }
+      },
+      "required": [
+        "logId",
+        "index",
+        "proof"
+      ],
+      "additionalProperties": false,
+      "description": "Transparency-log inclusion transport (§4.3). Carried in the envelope so the log-inclusion check (FR-13) has its inputs; **not** verified by `src/verify/signature`. Typed here to pin the wire shape."
+    }
+  }
+}

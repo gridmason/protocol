@@ -8,6 +8,30 @@ import {
   generateManifestSchema,
   serializeSchema,
 } from './manifest-schema.mjs';
+import {
+  SIGNATURE_ENVELOPE_SCHEMA_PATH,
+  generateSignatureEnvelopeSchema,
+} from './signature-schema.mjs';
+import {
+  REVOCATION_SCHEMA_PATH,
+  generateRevocationSchema,
+} from './revocation-schema.mjs';
+import {
+  LOG_ENTRY_SCHEMA_PATH,
+  generateLogEntrySchema,
+} from './log-entry-schema.mjs';
+import {
+  TRUST_ROOT_SCHEMA_PATH,
+  generateTrustRootSchema,
+} from './trust-root-schema.mjs';
 
-mkdirSync(path.dirname(MANIFEST_SCHEMA_PATH), { recursive: true });
-writeFileSync(MANIFEST_SCHEMA_PATH, serializeSchema(generateManifestSchema()));
+for (const [schemaPath, schema] of [
+  [MANIFEST_SCHEMA_PATH, generateManifestSchema()],
+  [SIGNATURE_ENVELOPE_SCHEMA_PATH, generateSignatureEnvelopeSchema()],
+  [REVOCATION_SCHEMA_PATH, generateRevocationSchema()],
+  [LOG_ENTRY_SCHEMA_PATH, generateLogEntrySchema()],
+  [TRUST_ROOT_SCHEMA_PATH, generateTrustRootSchema()],
+]) {
+  mkdirSync(path.dirname(schemaPath), { recursive: true });
+  writeFileSync(schemaPath, serializeSchema(schema));
+}

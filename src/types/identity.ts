@@ -27,6 +27,9 @@ export type ParsedSource =
  * A source-qualified widget identity: the `widgetID` carried by every
  * {@link LayoutWidget}. Equality and ordering treat `source` and `tag` together
  * (see {@link widgetIdEqual}); a bare `tag` is not an identity.
+ *
+ * The canonical spelling is `WidgetID` (capital `ID`) — there is no `WidgetId`
+ * alias. Dependents (e.g. the sdk) should import and re-export this name.
  */
 export interface WidgetID {
   /** A `local` / `sideload:<origin>` / registry-id source string. */

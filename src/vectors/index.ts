@@ -27,7 +27,7 @@ export {
   manifestVectors,
   tagVectors,
 } from './manifest.js';
-export { contextVectors } from './context.js';
+export { contextValueVectors, contextVectors } from './context.js';
 export { layoutVectors } from './layout.js';
 
 export type {
@@ -36,6 +36,7 @@ export type {
   CapabilityStringVector,
   ConformanceReport,
   ConformanceSurface,
+  ContextValueVector,
   ContextVector,
   LayoutExpectation,
   LayoutVector,

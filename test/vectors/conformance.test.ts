@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   capabilityObjectVectors,
   capabilityStringVectors,
+  contextValueVectors,
   contextVectors,
   layoutVectors,
   manifestVectors,
@@ -64,6 +65,15 @@ describe('runConformanceVectors — catches divergence (SPEC §6)', () => {
     expect(failed.every((r) => r.group === 'context-subset')).toBe(true);
   });
 
+  it('a context-value matcher that always returns true fails the negative context-match vectors', () => {
+    const broken: ConformanceSurface = { matchesContextMap: () => true };
+    const report = runConformanceVectors(broken);
+    expect(report.ok).toBe(false);
+    const failed = report.results.filter((r) => !r.ok);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.every((r) => r.group === 'context-match')).toBe(true);
+  });
+
   it('a tag linter that always passes fails the negative tag vectors', () => {
     const broken: ConformanceSurface = { lintTag: () => ({ ok: true, violations: [] }) };
     const report = runConformanceVectors(broken);
@@ -90,6 +100,8 @@ describe('vector corpus shape', () => {
     expect(capabilityObjectVectors.some((v) => v.error !== undefined)).toBe(true);
     expect(contextVectors.some((v) => v.subset)).toBe(true);
     expect(contextVectors.some((v) => !v.subset)).toBe(true);
+    expect(contextValueVectors.some((v) => v.matches)).toBe(true);
+    expect(contextValueVectors.some((v) => !v.matches)).toBe(true);
     expect(layoutVectors.some((v) => !v.expected.readOnly)).toBe(true);
     expect(layoutVectors.some((v) => v.expected.readOnly)).toBe(true);
   });

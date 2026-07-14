@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { isContextSubset } from '../src/types/context.js';
-import type { ContextMap } from '../src/types/context.js';
+import { isContextSubset, matchesContextMap, matchesContextType } from '../src/types/context.js';
+import type { ContextMap, PageContext } from '../src/types/context.js';
 
 // docs/SPEC.md §3.2 — the subset check `requiresContext ⊆ pageContext`, the one
 // implementation picker-gating and layout-resolution share. Positive and
@@ -193,5 +193,99 @@ describe('purity', () => {
     isContextSubset(requires, page);
     expect(page).toEqual(specPage);
     expect(requires).toEqual({ record: { type: 'record-ref', recordType: 'customer' } });
+  });
+});
+
+// docs/SPEC.md §3.2 — the runtime value side (issue #37). `matchesContextType`
+// checks one value against a declared type; `matchesContextMap` checks a whole
+// PageContext against a ContextMap. The type, never the value's own shape,
+// drives the discrimination.
+
+describe('matchesContextType — primitives', () => {
+  test('record-ref matches on shape and record kind', () => {
+    expect(matchesContextType({ recordType: 'customer', id: 'c1' }, { type: 'record-ref', recordType: 'customer' })).toBe(true);
+  });
+
+  test('record-ref fails on recordType mismatch', () => {
+    expect(matchesContextType({ recordType: 'team', id: 'c1' }, { type: 'record-ref', recordType: 'customer' })).toBe(false);
+  });
+
+  test('record-ref fails when id is missing or non-string', () => {
+    expect(matchesContextType({ recordType: 'customer' }, { type: 'record-ref', recordType: 'customer' })).toBe(false);
+    expect(matchesContextType('c1', { type: 'record-ref', recordType: 'customer' })).toBe(false);
+  });
+
+  test('string and id both accept any string', () => {
+    expect(matchesContextType('hi', { type: 'string' })).toBe(true);
+    expect(matchesContextType('id_1', { type: 'id' })).toBe(true);
+    expect(matchesContextType(5, { type: 'string' })).toBe(false);
+    expect(matchesContextType(5, { type: 'id' })).toBe(false);
+  });
+
+  test('number accepts only finite numbers', () => {
+    expect(matchesContextType(0, { type: 'number' })).toBe(true);
+    expect(matchesContextType(-1.5, { type: 'number' })).toBe(true);
+    expect(matchesContextType(Number.NaN, { type: 'number' })).toBe(false);
+    expect(matchesContextType(Number.POSITIVE_INFINITY, { type: 'number' })).toBe(false);
+    expect(matchesContextType('5', { type: 'number' })).toBe(false);
+  });
+
+  test('bool accepts only booleans', () => {
+    expect(matchesContextType(true, { type: 'bool' })).toBe(true);
+    expect(matchesContextType(false, { type: 'bool' })).toBe(true);
+    expect(matchesContextType('true', { type: 'bool' })).toBe(false);
+  });
+});
+
+describe('matchesContextType — composites', () => {
+  test('list matches when every element matches the element type', () => {
+    expect(matchesContextType(['a', 'b'], { type: 'list', element: { type: 'string' } })).toBe(true);
+    expect(matchesContextType([], { type: 'list', element: { type: 'string' } })).toBe(true);
+    expect(matchesContextType(['a', 5], { type: 'list', element: { type: 'string' } })).toBe(false);
+    expect(matchesContextType('a', { type: 'list', element: { type: 'string' } })).toBe(false);
+  });
+
+  test('object matches per declared field, surplus fields ignored', () => {
+    const type = { type: 'object', fields: { active: { type: 'bool' } } } as const;
+    expect(matchesContextType({ active: true, extra: 1 }, type)).toBe(true);
+    expect(matchesContextType({ active: 'yes' }, type)).toBe(false);
+    expect(matchesContextType({}, type)).toBe(false);
+    expect(matchesContextType('nope', type)).toBe(false);
+    expect(matchesContextType([], type)).toBe(false);
+  });
+});
+
+describe('matchesContextMap', () => {
+  const map: ContextMap = {
+    record: { type: 'record-ref', recordType: 'customer' },
+    count: { type: 'number' },
+  };
+  const context: PageContext = {
+    record: { recordType: 'customer', id: 'c1' },
+    count: 3,
+    surplus: 'ignored',
+  };
+
+  test('a conforming context with surplus keys passes', () => {
+    expect(matchesContextMap(context, map)).toBe(true);
+  });
+
+  test('empty map is vacuously satisfied', () => {
+    expect(matchesContextMap(context, {})).toBe(true);
+  });
+
+  test('a missing declared key fails', () => {
+    expect(matchesContextMap({ record: { recordType: 'customer', id: 'c1' } }, map)).toBe(false);
+  });
+
+  test('a non-conforming value fails', () => {
+    expect(matchesContextMap({ record: { recordType: 'customer', id: 'c1' }, count: 'three' }, map)).toBe(false);
+  });
+
+  test('does not mutate its inputs', () => {
+    const ctx: PageContext = { record: { recordType: 'customer', id: 'c1' }, count: 3 };
+    const snapshot = structuredClone(ctx);
+    matchesContextMap(ctx, map);
+    expect(ctx).toEqual(snapshot);
   });
 });

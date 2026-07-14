@@ -16,11 +16,16 @@ import {
   LOG_ENTRY_SCHEMA_PATH,
   generateLogEntrySchema,
 } from './log-entry-schema.mjs';
+import {
+  TRUST_ROOT_SCHEMA_PATH,
+  generateTrustRootSchema,
+} from './trust-root-schema.mjs';
 
 for (const [schemaPath, schema] of [
   [MANIFEST_SCHEMA_PATH, generateManifestSchema()],
   [REVOCATION_SCHEMA_PATH, generateRevocationSchema()],
   [LOG_ENTRY_SCHEMA_PATH, generateLogEntrySchema()],
+  [TRUST_ROOT_SCHEMA_PATH, generateTrustRootSchema()],
 ]) {
   mkdirSync(path.dirname(schemaPath), { recursive: true });
   writeFileSync(schemaPath, serializeSchema(schema));

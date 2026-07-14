@@ -1,0 +1,9 @@
+{
+  "formatVersion": "1",
+  "registryId": "registry.gridmason.dev",
+  "countersignRoots": ["root-2025"],
+  "issuerAllowlist": [],
+  "logPublicKeys": [],
+  "notBefore": 1704067200000,
+  "notAfter": 1735689600000
+}

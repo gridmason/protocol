@@ -101,3 +101,30 @@ export function formatCapability(capability: Capability): string {
     ? capability.api
     : `${capability.api}:${capability.scope}`;
 }
+
+/**
+ * Whether a single **declared** capability grants a **required** one under the
+ * scope-prefix containment rule (docs/SPEC.md §3.1, §5–§6): the apis must be
+ * equal and the declared scope path must be a **prefix** of the required one. An
+ * unscoped declaration grants every scope of its api; `records.read:recordType`
+ * grants every record type; `records.read:recordType:customer` grants only
+ * `customer`. This is `min(user, widget)` containment expressed for one pair —
+ * a host's SDK gate, the CLI's `--proxy` enforcement, and the SDK fixture handle
+ * all apply it, so promoting the one definition here keeps them from drifting.
+ * A caller with a list tests `declared.some((cap) => grantsCapability(cap, req))`.
+ * Pure; never throws.
+ */
+export function grantsCapability(declared: Capability, required: Capability): boolean {
+  if (declared.api !== required.api) return false;
+  return isScopePrefix(scopePathOf(declared), scopePathOf(required));
+}
+
+/** A capability's scope split into a path, or the empty path when unscoped. */
+function scopePathOf(capability: Capability): string[] {
+  return capability.scope === undefined ? [] : capability.scope.split(':');
+}
+
+/** Whether `prefix` is a (possibly equal) leading slice of `path`. */
+function isScopePrefix(prefix: readonly string[], path: readonly string[]): boolean {
+  return prefix.length <= path.length && prefix.every((segment, i) => segment === path[i]);
+}

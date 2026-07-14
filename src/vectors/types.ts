@@ -56,6 +56,9 @@ export interface ConformanceSurface {
   readonly matchesContextMap?: (context: PageContext, contextMap: ContextMap) => boolean;
   readonly migrate?: (doc: VersionedLayout, options: MigrateOptions) => MigrateResult;
   readonly validateManifest?: (manifest: unknown) => boolean;
+  readonly grantsCapability?: (declared: Capability, required: Capability) => boolean;
+  readonly isDevProxySdkRequest?: (value: unknown) => boolean;
+  readonly isDevProxySdkResponse?: (value: unknown) => boolean;
 }
 
 /** A manifest schema-validity vector: does the manifest satisfy the schema? */
@@ -95,6 +98,37 @@ export interface CapabilityObjectVector {
   readonly name: string;
   readonly capability: Capability;
   readonly error?: CapabilityError;
+}
+
+/**
+ * A scope-prefix **grant** vector: does a single `declared` capability grant
+ * `required` under {@link import('../types/manifest/capability.js').grantsCapability}?
+ */
+export interface CapabilityGrantVector {
+  readonly name: string;
+  readonly declared: Capability;
+  readonly required: Capability;
+  readonly grants: boolean;
+}
+
+/**
+ * A dev-proxy wire-**request** guard vector: is `value` a well-formed
+ * {@link import('../types/dev-proxy.js').DevProxySdkRequest}?
+ */
+export interface DevProxyRequestVector {
+  readonly name: string;
+  readonly value: unknown;
+  readonly valid: boolean;
+}
+
+/**
+ * A dev-proxy wire-**response** guard vector: is `value` a well-formed
+ * {@link import('../types/dev-proxy.js').DevProxySdkResponse}?
+ */
+export interface DevProxyResponseVector {
+  readonly name: string;
+  readonly value: unknown;
+  readonly valid: boolean;
 }
 
 /** A page-context subset vector: `requires ⊆ page`? */

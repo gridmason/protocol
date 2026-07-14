@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CAPABILITY_APIS,
   formatCapability,
+  grantsCapability,
   parseCapability,
   validateCapability,
 } from '../../src/types/manifest/index.js';
@@ -102,5 +103,35 @@ describe('formatCapability', () => {
       expect(parsed).toMatchObject({ ok: true, api: capability.api });
       if (parsed.ok) expect(parsed.scope).toBe(capability.scope);
     }
+  });
+});
+
+describe('grantsCapability', () => {
+  it('grants when the declared scope is a prefix of (or equal to) the required scope', () => {
+    const required: Capability = { api: 'records.read', scope: 'recordType:customer' };
+    expect(grantsCapability({ api: 'records.read' }, required)).toBe(true);
+    expect(grantsCapability({ api: 'records.read', scope: 'recordType' }, required)).toBe(true);
+    expect(grantsCapability({ api: 'records.read', scope: 'recordType:customer' }, required)).toBe(true);
+  });
+
+  it('does not grant across a different api', () => {
+    expect(
+      grantsCapability(
+        { api: 'records.write', scope: 'recordType:customer' },
+        { api: 'records.read', scope: 'recordType:customer' },
+      ),
+    ).toBe(false);
+  });
+
+  it('does not grant a shallower or sibling required scope', () => {
+    const declared: Capability = { api: 'records.read', scope: 'recordType:customer' };
+    expect(grantsCapability(declared, { api: 'records.read', scope: 'recordType' })).toBe(false);
+    expect(grantsCapability(declared, { api: 'records.read' })).toBe(false);
+    expect(grantsCapability(declared, { api: 'records.read', scope: 'recordType:team' })).toBe(false);
+  });
+
+  it('matches a single-segment net host exactly', () => {
+    expect(grantsCapability({ api: 'net', scope: 'api.acme.com' }, { api: 'net', scope: 'api.acme.com' })).toBe(true);
+    expect(grantsCapability({ api: 'net', scope: 'api.acme.com' }, { api: 'net', scope: 'api.evil.com' })).toBe(false);
   });
 });

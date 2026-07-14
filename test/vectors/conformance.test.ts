@@ -5,10 +5,13 @@ import { Ajv } from 'ajv';
 import { describe, expect, it } from 'vitest';
 
 import {
+  capabilityGrantVectors,
   capabilityObjectVectors,
   capabilityStringVectors,
   contextValueVectors,
   contextVectors,
+  devProxyRequestVectors,
+  devProxyResponseVectors,
   layoutVectors,
   manifestVectors,
   runConformanceVectors,
@@ -86,6 +89,30 @@ describe('runConformanceVectors — catches divergence (SPEC §6)', () => {
     expect(report.ok).toBe(false);
     expect(report.results.some((r) => !r.ok && r.group === 'manifest-schema')).toBe(true);
   });
+
+  it('a grant rule that always grants fails the negative capability-grant vectors', () => {
+    const report = runConformanceVectors({ grantsCapability: () => true });
+    expect(report.ok).toBe(false);
+    const failed = report.results.filter((r) => !r.ok);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.every((r) => r.group === 'capability-grant')).toBe(true);
+  });
+
+  it('a request guard that accepts everything fails the negative dev-proxy-request vectors', () => {
+    const report = runConformanceVectors({ isDevProxySdkRequest: () => true });
+    expect(report.ok).toBe(false);
+    const failed = report.results.filter((r) => !r.ok);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.every((r) => r.group === 'dev-proxy-request')).toBe(true);
+  });
+
+  it('a response guard that accepts everything fails the negative dev-proxy-response vectors', () => {
+    const report = runConformanceVectors({ isDevProxySdkResponse: () => true });
+    expect(report.ok).toBe(false);
+    const failed = report.results.filter((r) => !r.ok);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.every((r) => r.group === 'dev-proxy-response')).toBe(true);
+  });
 });
 
 describe('vector corpus shape', () => {
@@ -102,6 +129,12 @@ describe('vector corpus shape', () => {
     expect(contextVectors.some((v) => !v.subset)).toBe(true);
     expect(contextValueVectors.some((v) => v.matches)).toBe(true);
     expect(contextValueVectors.some((v) => !v.matches)).toBe(true);
+    expect(capabilityGrantVectors.some((v) => v.grants)).toBe(true);
+    expect(capabilityGrantVectors.some((v) => !v.grants)).toBe(true);
+    expect(devProxyRequestVectors.some((v) => v.valid)).toBe(true);
+    expect(devProxyRequestVectors.some((v) => !v.valid)).toBe(true);
+    expect(devProxyResponseVectors.some((v) => v.valid)).toBe(true);
+    expect(devProxyResponseVectors.some((v) => !v.valid)).toBe(true);
     expect(layoutVectors.some((v) => !v.expected.readOnly)).toBe(true);
     expect(layoutVectors.some((v) => v.expected.readOnly)).toBe(true);
   });

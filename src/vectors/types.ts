@@ -9,14 +9,16 @@
  * ({@link ConformanceSurface}, `runConformanceVectors`), so a divergent
  * implementation fails a shared test rather than production (SPEC §6).
  *
- * This module is Phase A: it carries the **type** vectors (manifest schema +
- * tag/capability grammar, page-context subset, LayoutDoc migration). The
- * security **wire-format** negatives (tampered hash, wrong issuer, expired root,
- * forked log, stale feed) arrive in Phase B via FR-15's wire-vector issues
- * (P-E2 / P-E4) — see the extension note in `runner.ts`.
+ * Phase A carries the **type** vectors (manifest schema + tag/capability
+ * grammar, page-context subset, LayoutDoc migration). Phase B (P-E2) adds the
+ * **wire-format** vectors for the sign/verify byte path — canonical-bytes
+ * ({@link CanonWireVector}, {@link CanonMalleabilityVector}) and content-hash
+ * ({@link HashWireVector}, including the tampered `hash-mismatch` negative). The
+ * later signature/log/root/freshness negatives (P-E4) join the same corpus.
  */
 
 import type { ContextMap, PageContext } from '../types/context.js';
+import type { HashVerdict, MultihashString } from '../verify/index.js';
 import type {
   MigrateOptions,
   MigrateResult,
@@ -59,6 +61,23 @@ export interface ConformanceSurface {
   readonly grantsCapability?: (declared: Capability, required: Capability) => boolean;
   readonly isDevProxySdkRequest?: (value: unknown) => boolean;
   readonly isDevProxySdkResponse?: (value: unknown) => boolean;
+  /**
+   * Canonicalize a JSON value to its RFC-8785 bytes. Drives the sync canon-wire
+   * group; defaults to {@link import('../canon/canonicalize.js').canonicalize}.
+   */
+  readonly canonicalize?: (value: unknown) => Uint8Array;
+  /**
+   * SHA-256 the exact bytes to a `sha2-256:<hex>` multihash. Used for the
+   * positive digest assertion of the hash-wire group (async); defaults to
+   * {@link import('../verify/hash/hash.js').hashBytes}.
+   */
+  readonly hashBytes?: (bytes: Uint8Array) => Promise<MultihashString>;
+  /**
+   * Check bytes against an untrusted expected hash, returning a stable verdict.
+   * Drives the hash-wire group (async — see `runConformanceVectorsAsync`);
+   * defaults to {@link import('../verify/hash/hash.js').verifyHash}.
+   */
+  readonly verifyHash?: (bytes: Uint8Array, expected: string) => Promise<HashVerdict>;
 }
 
 /** A manifest schema-validity vector: does the manifest satisfy the schema? */
@@ -168,6 +187,51 @@ export interface LayoutVector {
   readonly migrators: readonly Migrator[];
   readonly target?: SchemaVersion;
   readonly expected: LayoutExpectation;
+}
+
+/**
+ * A canonicalization **wire** vector: a JSON `value` and the exact canonical
+ * bytes it must produce, hex-encoded (lowercase, UTF-8) so the fixture pins the
+ * signed byte form byte-for-byte. Drives `canonicalize` in the runner.
+ */
+export interface CanonWireVector {
+  readonly name: string;
+  readonly value: unknown;
+  /** Lowercase-hex UTF-8 of the RFC-8785 canonical form of `value`. */
+  readonly canonicalHex: string;
+  readonly note?: string;
+}
+
+/**
+ * A canonicalization **malleability** vector: several source JSON *texts* that
+ * differ only in key order, insignificant whitespace, or escape spelling and so
+ * must all `JSON.parse` + `canonicalize` to the single byte sequence
+ * `canonicalHex`. The guard that closes signature malleability (SPEC §4).
+ */
+export interface CanonMalleabilityVector {
+  readonly name: string;
+  /** Source JSON documents, each parsed then canonicalized. */
+  readonly jsonVariants: readonly string[];
+  /** The one canonical form every variant must collapse to (lowercase-hex UTF-8). */
+  readonly canonicalHex: string;
+  readonly note?: string;
+}
+
+/**
+ * A content-hash **wire** vector: bytes (`inputHex`) checked against an untrusted
+ * `expected` hash string, asserting the required {@link HashVerdictReason}. A
+ * `reason: 'ok'` vector additionally pins `hashBytes(bytes) === expected`; the
+ * `reason: 'hash-mismatch'` vector is the tampered-byte negative (SPEC §7).
+ */
+export interface HashWireVector {
+  readonly name: string;
+  /** Lowercase-hex of the exact bytes to hash (allows empty and non-UTF-8). */
+  readonly inputHex: string;
+  /** The untrusted expected hash string checked against `inputHex`. */
+  readonly expected: string;
+  /** The stable verdict a conforming `verifyHash` must return. */
+  readonly reason: HashVerdict['reason'];
+  readonly note?: string;
 }
 
 /** One vector's verdict, collected into a {@link ConformanceReport}. */

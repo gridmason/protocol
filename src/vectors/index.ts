@@ -12,14 +12,14 @@
  */
 
 /**
- * The format major these type vectors target. Conformance vectors are versioned
- * by manifest format major (SPEC §6): this tracks the `1` in `formatVersion`
- * `1.x`. Bump alongside a new format major; Phase B wire vectors join the same
- * corpus under this version.
+ * The format major these vectors target. Conformance vectors are versioned by
+ * manifest format major (SPEC §6): this tracks the `1` in `formatVersion` `1.x`.
+ * Bump alongside a new format major; the Phase-B wire vectors (canon-wire,
+ * hash-wire) join the same corpus under this version.
  */
 export const CONFORMANCE_VECTORS_VERSION = 1;
 
-export { runConformanceVectors } from './runner.js';
+export { runConformanceVectors, runConformanceVectorsAsync } from './runner.js';
 export { defaultValidateManifest } from './manifest.js';
 export {
   capabilityObjectVectors,
@@ -34,8 +34,12 @@ export {
   devProxyResponseVectors,
 } from './dev-proxy.js';
 export { layoutVectors } from './layout.js';
+export { canonMalleabilityVectors, canonWireVectors } from './canon-wire.js';
+export { hashWireVectors } from './hash-wire.js';
 
 export type {
+  CanonMalleabilityVector,
+  CanonWireVector,
   CapabilityGrantVector,
   CapabilityObjectVector,
   CapabilityStringExpectation,
@@ -46,6 +50,7 @@ export type {
   ContextVector,
   DevProxyRequestVector,
   DevProxyResponseVector,
+  HashWireVector,
   LayoutExpectation,
   LayoutVector,
   ManifestVector,

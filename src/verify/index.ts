@@ -6,12 +6,14 @@
  * see vitest.config.ts).
  *
  * Content hashing (§4.1), dual-signature envelope verification (§4.2),
- * revocation-feed freshness (§4.3), transparency-log proofs (§4.3), and
- * trust-root parsing/pinning/rotation (§4.4) have landed; the remaining verify
- * surface is populated by the rest of P-E3/P-E4.
+ * revocation-feed freshness (§4.3), transparency-log proofs (§4.3), trust-root
+ * parsing/pinning/rotation (§4.4), and the `verifyRelease`/`verifyChunk`
+ * orchestration (§5) have landed; `negotiate` (§6) is reserved and arrives in
+ * P-E4.
  */
 export * from './hash/index.js';
 export * from './signature/index.js';
 export * from './freshness/index.js';
 export * from './log/index.js';
 export * from './trust/index.js';
+export * from './release/index.js';

@@ -9,6 +9,10 @@ import {
   serializeSchema,
 } from './manifest-schema.mjs';
 import {
+  SIGNATURE_ENVELOPE_SCHEMA_PATH,
+  generateSignatureEnvelopeSchema,
+} from './signature-schema.mjs';
+import {
   REVOCATION_SCHEMA_PATH,
   generateRevocationSchema,
 } from './revocation-schema.mjs';
@@ -23,6 +27,7 @@ import {
 
 for (const [schemaPath, schema] of [
   [MANIFEST_SCHEMA_PATH, generateManifestSchema()],
+  [SIGNATURE_ENVELOPE_SCHEMA_PATH, generateSignatureEnvelopeSchema()],
   [REVOCATION_SCHEMA_PATH, generateRevocationSchema()],
   [LOG_ENTRY_SCHEMA_PATH, generateLogEntrySchema()],
   [TRUST_ROOT_SCHEMA_PATH, generateTrustRootSchema()],

@@ -4,10 +4,18 @@
  * revocation & kill feed, trust-root document, offline bundle. TypeScript is the
  * authoring surface; the JSON Schemas under `schemas/` are generated (FR-5).
  *
- * Landed: the revocation & kill feed (§4.3), the transparency-log entry (§4.3),
- * and the trust-root document (§4.4). The remaining wire formats join here as
- * their P-E3 leaves land.
+ * Landed: the dual-signature envelope (§4.2), the revocation & kill feed (§4.3),
+ * the transparency-log entry (§4.3), and the trust-root document (§4.4). The
+ * remaining wire formats join here as their P-E3/P-E4 leaves land.
  */
+export type {
+  SignatureAlg,
+  SignatureSubject,
+  PublisherSignature,
+  RegistryCountersignature,
+  LogInclusion,
+  SignatureEnvelope,
+} from './signature.js';
 export type {
   ArtifactState,
   Cursor,

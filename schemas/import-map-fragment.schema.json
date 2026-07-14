@@ -1,0 +1,411 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/ImportMapFragment",
+  "definitions": {
+    "ImportMapFragment": {
+      "type": "object",
+      "properties": {
+        "registry": {
+          "type": "string",
+          "description": "This registry's id — qualifies every entry for source-qualified merging (registry SPEC §9)."
+        },
+        "imports": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Bare specifier → hash-pinned entry URL, one per resolved module."
+        },
+        "scopes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "description": "Import-map `scopes`: keyed by a resolved module's entry URL, mapping a shared specifier to the module-specific major URL. Emitted **only** when a widget needs a different major than the shell's default (the highest offered) — never a global override (GW-D22)."
+        },
+        "modules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ResolvedModule"
+          },
+          "description": "The resolved modules, carrying their signature bundles."
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExcludedModule"
+          },
+          "description": "Requested modules that did not resolve, with reasons (never in `imports`)."
+        }
+      },
+      "required": [
+        "registry",
+        "imports",
+        "scopes",
+        "modules",
+        "excluded"
+      ],
+      "additionalProperties": false,
+      "description": "The import-map fragment: the response body of `POST /v1/resolve`. A native-ESM import map (`imports` + `scopes`, GW-D22) extended with the per-module signature bundles and the excluded list, all qualified by  {@link  registry }  (FR-10)."
+    },
+    "ResolvedModule": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source registry id — the `source` half of source-qualified identity (registry SPEC §9)."
+        },
+        "publisher": {
+          "type": "string",
+          "description": "Publisher prefix that owns the tag on this registry."
+        },
+        "tag": {
+          "type": "string",
+          "description": "The widget custom-element tag."
+        },
+        "version": {
+          "type": "string",
+          "description": "The exact resolved version."
+        },
+        "specifier": {
+          "type": "string",
+          "description": "The bare import-map specifier this module is bound to (`<registry>/<tag>`)."
+        },
+        "url": {
+          "type": "string",
+          "description": "The hash-pinned, root-relative serving URL of the entry module (`/v1/artifacts/:hash`)."
+        },
+        "bundle": {
+          "$ref": "#/definitions/SignatureBundle",
+          "description": "The verification material for  {@link  url } ."
+        }
+      },
+      "required": [
+        "source",
+        "publisher",
+        "tag",
+        "version",
+        "specifier",
+        "url",
+        "bundle"
+      ],
+      "additionalProperties": false,
+      "description": "One resolved module in a fragment: its source-qualified identity, the bare `specifier` it is mapped under in  {@link  ImportMapFragment.imports } , its hash-pinned entry URL, and the  {@link  SignatureBundle }  that proves the URL."
+    },
+    "SignatureBundle": {
+      "type": "object",
+      "properties": {
+        "release": {
+          "$ref": "#/definitions/ReleaseDoc",
+          "description": "The signed release document ({ path → hash }); canonicalized + bound to the subject."
+        },
+        "envelope": {
+          "$ref": "#/definitions/SignatureEnvelope",
+          "description": "The completed dual-signature envelope (publisher + registry countersignature)."
+        },
+        "logEntry": {
+          "$ref": "#/definitions/TransparencyLogEntry",
+          "description": "The transparency-log inclusion entry the release was anchored in."
+        }
+      },
+      "required": [
+        "release",
+        "envelope",
+        "logEntry"
+      ],
+      "additionalProperties": false,
+      "description": "The signature bundle a host verifies before loading a module (registry SPEC §8, §10) — exactly the material this package's `verifyRelease` consumes as its\n*untrusted, network-delivered* inputs (the host supplies the pinned trust roots, CA/countersign roots, log key, and clock out of band). Identical in shape to the registry serving surface's `GET /v1/releases/:hash` body, so a host verifies a fragment entry with no second fetch."
+    },
+    "ReleaseDoc": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version as `major.minor`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "artifact": {
+          "type": "string",
+          "description": "Publisher-prefixed, version-qualified artifact id, e.g. `acme-chart@2.3.1`."
+        },
+        "files": {
+          "$ref": "#/definitions/ReleaseHashMap",
+          "description": "Every servable path/URL mapped to the expected hash of its exact served bytes."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "artifact",
+        "files"
+      ],
+      "additionalProperties": false,
+      "description": "A signed release document (docs/SPEC.md §4.1) — the artifact identity plus the `{ url → content-hash }` map of every file the runtime may load. Its canonical bytes (JCS / RFC-8785) are what the signature envelope's `subject.releaseHash` covers, so tampering with any listed hash breaks the signature. `verifyRelease` returns  {@link  files }  as a `Map` only after the whole document is proven to hash to the signed subject."
+    },
+    "ReleaseHashMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/MultihashString"
+      },
+      "description": "The signed release document's file list (docs/SPEC.md §4.1): every path the runtime may load mapped to the expected hash of its exact served bytes. Consumed later by `verifyRelease` (FR-14) and by the dashboard Service Worker's per-URL check. `path` is the served URL/path key; the map is read-only because a release manifest is immutable once signed."
+    },
+    "MultihashString": {
+      "type": "string",
+      "description": "A multihash-tagged content hash: the algorithm prefix followed by the digest. Today only `sha2-256:<hex>` is produced and accepted; the template keeps the type honest about the in-band tag. This is a shape hint, not a validity proof — an arbitrary `sha2-256:` string still satisfies it, so untrusted values are validated by  {@link  verifyHash }  rather than by the type alone."
+    },
+    "SignatureEnvelope": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version as `major.minor`. Minor is additive/back-compatible, major is breaking. This module speaks major `1`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "subject": {
+          "$ref": "#/definitions/SignatureSubject",
+          "description": "The artifact and release-hash the signatures cover."
+        },
+        "publisherSig": {
+          "$ref": "#/definitions/PublisherSignature",
+          "description": "Publisher (authorship) signature — Sigstore keyless."
+        },
+        "registrySig": {
+          "$ref": "#/definitions/RegistryCountersignature",
+          "description": "Registry (approval) countersignature — present once review has passed."
+        },
+        "logInclusion": {
+          "$ref": "#/definitions/LogInclusion",
+          "description": "Transparency-log inclusion transport (verified elsewhere, FR-13)."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "subject",
+        "publisherSig",
+        "logInclusion"
+      ],
+      "additionalProperties": false,
+      "description": "The detached dual-signature envelope over a canonicalized release document (docs/SPEC.md §4.2). Consumed by  {@link  import ('../../verify/signature/index.js').verifySignatureEnvelope }  and, above it, by the `verifyRelease` orchestrator (FR-14)."
+    },
+    "SignatureSubject": {
+      "type": "object",
+      "properties": {
+        "artifact": {
+          "type": "string",
+          "description": "Publisher-prefixed, version-qualified artifact id, e.g. `acme-chart@2.3.1`."
+        },
+        "releaseHash": {
+          "$ref": "#/definitions/MultihashString",
+          "description": "Multihash-tagged content hash of the canonicalized release document (`sha2-256:<hex>`), the same encoding `src/verify/hash` produces."
+        }
+      },
+      "required": [
+        "artifact",
+        "releaseHash"
+      ],
+      "additionalProperties": false,
+      "description": "What the envelope is *about*: the exact artifact and the content hash of its canonicalized release document. The signatures cover this object (see  {@link  SignatureEnvelope } ); the verifier additionally re-derives the hash from the supplied release bytes so a matching signature over a lying `subject` is still refused."
+    },
+    "PublisherSignature": {
+      "type": "object",
+      "properties": {
+        "alg": {
+          "$ref": "#/definitions/SignatureAlg",
+          "description": "Signature algorithm; `ES256` at format `1.x`."
+        },
+        "cert": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the DER-encoded X.509 short-lived certificate."
+        },
+        "issuer": {
+          "type": "string",
+          "description": "OIDC issuer the publisher authenticated to (e.g. `https://accounts.google.com`). The trust anchor for the publisher side; the verifier requires it to equal the issuer the certificate attests and to be on the registry's issuer allowlist (recorded in the trust root, §4.4)."
+        },
+        "subjectClaims": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Identity claims the OIDC issuer asserted (e.g. `{ email: \"dev@acme.com\" }`), bound into the certificate's subject-alternative name. The verifier requires these to match the certificate."
+        },
+        "sig": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the raw ECDSA signature in IEEE-P1363 form (`r || s`, 64 bytes for P-256) over the canonical bytes of  {@link  SignatureSubject } ."
+        }
+      },
+      "required": [
+        "alg",
+        "cert",
+        "issuer",
+        "subjectClaims",
+        "sig"
+      ],
+      "additionalProperties": false,
+      "description": "The publisher (authorship) signature — Sigstore keyless. `cert` is a short-lived certificate binding a public key to an OIDC identity; the verifier extracts the issuer and identity **from the certificate**, so the `issuer`/`subjectClaims` mirrored here are convenience transport that must\n*match* the certificate — a mismatch is refused, never trusted."
+    },
+    "SignatureAlg": {
+      "type": "string",
+      "const": "ES256",
+      "description": "Signature algorithm identifier. Only `ES256` (ECDSA over NIST P-256 with SHA-256) is produced and accepted at format `1.x`; it is a string union rather than a bare `string` so the schema pins the accepted set and an unknown algorithm is a typed refusal, not a silent pass. Additional algorithms (e.g. `EdDSA`) are a future additive (minor) format bump."
+    },
+    "RegistryCountersignature": {
+      "type": "object",
+      "properties": {
+        "alg": {
+          "$ref": "#/definitions/SignatureAlg",
+          "description": "Signature algorithm; `ES256` at format `1.x`."
+        },
+        "cert": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the DER-encoded X.509 countersign certificate."
+        },
+        "sig": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the raw ECDSA signature in IEEE-P1363 form over the publisher signature's raw bytes (the countersigned value)."
+        }
+      },
+      "required": [
+        "alg",
+        "cert",
+        "sig"
+      ],
+      "additionalProperties": false,
+      "description": "The registry (approval) countersignature — applied only after registry review passes, with the countersign key held separately from review staff. It signs the publisher signature it approved, so approval is bound to that exact publisher signature. Optional on the wire: a published-but-not-yet-approved release has a `publisherSig` and no `registrySig`; the verifier refuses that with a distinct reason."
+    },
+    "LogInclusion": {
+      "type": "object",
+      "properties": {
+        "logId": {
+          "type": "string",
+          "description": "Identifier of the transparency log the entry lives in."
+        },
+        "index": {
+          "type": "number",
+          "description": "Zero-based leaf index of the entry."
+        },
+        "proof": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Merkle inclusion-proof hashes (base64), audited by the log-inclusion check."
+        }
+      },
+      "required": [
+        "logId",
+        "index",
+        "proof"
+      ],
+      "additionalProperties": false,
+      "description": "Transparency-log inclusion transport (§4.3). Carried in the envelope so the log-inclusion check (FR-13) has its inputs; **not** verified by `src/verify/signature`. Typed here to pin the wire shape."
+    },
+    "TransparencyLogEntry": {
+      "type": "object",
+      "properties": {
+        "logId": {
+          "type": "string",
+          "description": "Log identity — the hex SHA-256 of the log's public key. Names *which* log; the caller maps it to a pinned key. Non-load-bearing for the Merkle math.",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "index": {
+          "type": "number",
+          "description": "Zero-based leaf index of this entry within the tree of `inclusionProof.treeSize`."
+        },
+        "integratedTime": {
+          "type": "number",
+          "description": "Unix seconds at which the log integrated the entry. Carried, not verified here."
+        },
+        "canonicalBody": {
+          "type": "string",
+          "description": "The exact bytes that were logged as this leaf, base64. The leaf hash is `SHA-256(0x00 || canonicalBody)` (RFC 6962 leaf hashing).",
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        },
+        "inclusionProof": {
+          "$ref": "#/definitions/LogInclusionProof",
+          "description": "RFC 6962 audit path proving `canonicalBody` is the leaf at `index`."
+        },
+        "checkpoint": {
+          "type": "string",
+          "description": "The log's signed tree head as a c2sp.org/tlog-checkpoint signed note: `origin`, `treeSize`, and base64 root on their own lines, followed by a blank line and one or more `— <name> <base64>` signature lines. The verify lib checks the signature against the pinned log key before trusting the root."
+        }
+      },
+      "required": [
+        "logId",
+        "index",
+        "integratedTime",
+        "canonicalBody",
+        "inclusionProof",
+        "checkpoint"
+      ],
+      "additionalProperties": false,
+      "description": "A Sigstore/Rekor-compatible transparency-log entry (docs/SPEC.md §4.3). Proves the logged `canonicalBody` sits at leaf `index` of a log whose signed tree head is `checkpoint`."
+    },
+    "LogInclusionProof": {
+      "type": "object",
+      "properties": {
+        "treeSize": {
+          "type": "number",
+          "description": "Number of leaves in the tree this proof leads to the root of."
+        },
+        "rootHash": {
+          "type": "string",
+          "description": "The Merkle tree root at `treeSize`, lowercase hex. Advisory: the verify lib checks the recomputed root against the **signed checkpoint** root, and requires this field to agree with it (a self-consistent entry).",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "hashes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Sibling node hashes of the audit path, leaf-to-root, each a lowercase-hex SHA-256 digest. The array length is fixed by `index` and `treeSize` (RFC 6962); the verify lib enforces the hex/length of each element."
+        }
+      },
+      "required": [
+        "treeSize",
+        "rootHash",
+        "hashes"
+      ],
+      "additionalProperties": false,
+      "description": "An RFC 6962 inclusion proof: the Merkle audit path from a leaf up to the tree root at `treeSize`. `hashes` are the sibling node hashes, ordered leaf-to-root; the verify lib recomputes the root from the leaf and this path and compares it to the root the signed  {@link  TransparencyLogEntry.checkpoint }  commits to."
+    },
+    "ExcludedModule": {
+      "type": "object",
+      "properties": {
+        "publisher": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/definitions/ExclusionReason"
+        }
+      },
+      "required": [
+        "publisher",
+        "tag",
+        "version",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "description": "A module the host asked for that did not enter the fragment, with the reason. Reported rather than silently dropped so the host can render the registry SPEC §6/§8 fallback card — but a revoked/killed/unknown remote **never enters the import map** (registry SPEC §6). Echoes only the identity the host itself sent."
+    },
+    "ExclusionReason": {
+      "type": "string",
+      "enum": [
+        "unknown_publisher",
+        "unknown_module",
+        "not_distributable",
+        "no_release",
+        "unresolvable_release",
+        "unsatisfied_shared_scope"
+      ],
+      "description": "Why a requested module was not placed in the fragment. Stable machine codes."
+    }
+  }
+}

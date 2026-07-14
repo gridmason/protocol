@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/GateSnapshot",
+  "definitions": {
+    "GateSnapshot": {
+      "type": "object",
+      "properties": {
+        "registry": {
+          "type": "string",
+          "description": "The registry this snapshot targets — must equal the registry's id (registry SPEC §9: the host pins each prefix to one registry, so a snapshot is single-registry). A mismatch is a configuration error, refused typed."
+        },
+        "modules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GateModule"
+          },
+          "description": "The enabled remotes to resolve. May be empty (nothing enabled ⇒ empty fragment)."
+        },
+        "shared": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SharedOffer"
+            }
+          },
+          "description": "Shared-dependency majors the shell offers, keyed by bare specifier."
+        }
+      },
+      "required": [
+        "registry",
+        "modules"
+      ],
+      "additionalProperties": false,
+      "description": "A gate snapshot: the request body of `POST /v1/resolve`. The enabled modules the host wants URLs for, plus what the shell offers for each shared specifier so resolution can scope different majors. `shared` is optional — a fragment of fully self-contained widgets needs none."
+    },
+    "GateModule": {
+      "type": "object",
+      "properties": {
+        "publisher": {
+          "type": "string",
+          "description": "Publisher namespace prefix (unique within this registry, registry SPEC §9)."
+        },
+        "tag": {
+          "type": "string",
+          "description": "The widget custom-element tag (publisher-prefixed)."
+        },
+        "version": {
+          "type": "string",
+          "description": "The exact SemVer of the enabled artifact."
+        }
+      },
+      "required": [
+        "publisher",
+        "tag",
+        "version"
+      ],
+      "additionalProperties": false,
+      "description": "One enabled remote in a host's gate snapshot: an exact, source-qualified `(publisher, tag, version)` the host has decided to load. Versions are **exact** — this cut resolves a pinned version, never a version *set* or range (SCOPE cut: no version sets, GW-D19); the host's gate service already chose the version."
+    },
+    "SharedOffer": {
+      "type": "object",
+      "properties": {
+        "major": {
+          "type": "integer",
+          "description": "The SemVer major the shell offers at  {@link  url } ."
+        },
+        "url": {
+          "type": "string",
+          "description": "The module URL the shell serves this major from (host-owned)."
+        }
+      },
+      "required": [
+        "major",
+        "url"
+      ],
+      "additionalProperties": false,
+      "description": "One shared-dependency major the host **shell offers** for a bare specifier: the module URL the shell already provides for major `major`. A widget's manifest `sharedScope` declares the *range* it needs (GW-D22); resolution matches that range against these offers and emits a `scopes` entry when a widget needs a non-default major. The shell owns these URLs — the registry never hosts a shared dependency, it only scopes to what the shell declares (\"never globals\")."
+    }
+  }
+}

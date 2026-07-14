@@ -1,0 +1,18 @@
+{
+  "registry": "registry.gridmason.dev",
+  "imports": {
+    "registry.gridmason.dev/acme-chart": "/v1/artifacts/sha2-256:32d05fbeb9ac076f2e8d886b0c844db25d62f82915f7226ff7522a51d8dfbf41"
+  },
+  "scopes": {},
+  "modules": [
+    {
+      "source": "registry.gridmason.dev",
+      "publisher": "acme",
+      "tag": "acme-chart",
+      "version": "2.3.1",
+      "specifier": "registry.gridmason.dev/acme-chart",
+      "url": "/v1/artifacts/sha2-256:32d05fbeb9ac076f2e8d886b0c844db25d62f82915f7226ff7522a51d8dfbf41"
+    }
+  ],
+  "excluded": []
+}

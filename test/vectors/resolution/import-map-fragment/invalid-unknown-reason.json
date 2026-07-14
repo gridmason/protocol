@@ -1,0 +1,7 @@
+{
+  "registry": "registry.gridmason.dev",
+  "imports": {},
+  "scopes": {},
+  "modules": [],
+  "excluded": [{ "publisher": "acme", "tag": "acme-map", "version": "9.9.9", "reason": "banned" }]
+}

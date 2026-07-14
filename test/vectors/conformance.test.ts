@@ -14,6 +14,7 @@ import {
   devProxyResponseVectors,
   layoutVectors,
   manifestVectors,
+  negotiateVectors,
   runConformanceVectors,
   tagVectors,
 } from '../../src/vectors/index.js';
@@ -113,6 +114,14 @@ describe('runConformanceVectors — catches divergence (SPEC §6)', () => {
     expect(failed.length).toBeGreaterThan(0);
     expect(failed.every((r) => r.group === 'dev-proxy-response')).toBe(true);
   });
+
+  it('a negotiator that always returns ok fails the upgrade/refuse vectors', () => {
+    const report = runConformanceVectors({ negotiate: () => 'ok' });
+    expect(report.ok).toBe(false);
+    const failed = report.results.filter((r) => !r.ok);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.every((r) => r.group === 'negotiate')).toBe(true);
+  });
 });
 
 describe('vector corpus shape', () => {
@@ -137,5 +146,8 @@ describe('vector corpus shape', () => {
     expect(devProxyResponseVectors.some((v) => !v.valid)).toBe(true);
     expect(layoutVectors.some((v) => !v.expected.readOnly)).toBe(true);
     expect(layoutVectors.some((v) => v.expected.readOnly)).toBe(true);
+    expect(negotiateVectors.some((v) => v.outcome === 'ok')).toBe(true);
+    expect(negotiateVectors.some((v) => v.outcome === 'upgrade')).toBe(true);
+    expect(negotiateVectors.some((v) => v.outcome === 'refuse')).toBe(true);
   });
 });

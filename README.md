@@ -63,6 +63,50 @@ zero-config, but inject `ajv` for the authoritative schema.
 > negatives (tampered hash, wrong issuer, expired root, forked log, stale feed)
 > are added in Phase B (FR-15, P-E2 / P-E4) to the same corpus and runner.
 
+## Format lifecycle: negotiation & dual-running
+
+Every gridmason wire format carries a `formatVersion: major.minor` string.
+**Minor is additive / back-compatible; major is breaking.** A build declares the
+set of majors it can read — a `FormatSupport` — and `negotiate` decides how to
+treat a remote artifact's version:
+
+```ts
+import { negotiate, PROTOCOL_FORMAT_SUPPORT } from '@gridmason/protocol/negotiate';
+
+negotiate(PROTOCOL_FORMAT_SUPPORT, manifest.formatVersion);
+// 'ok'      → the current major this build speaks; read it as-is.
+// 'upgrade' → an older major still spoken (dual-running); readable now, but the
+//             peer should migrate to the current major.
+// 'refuse'  → a major newer than any spoken, a major no longer spoken, or a
+//             malformed version. Never guessed — do not load the artifact.
+```
+
+`PROTOCOL_FORMAT_SUPPORT` is the majors *this* package speaks (currently `1`,
+matching the `verify/` hot path); a host with its own dual-running policy passes
+its own `{ speaks: [...] }`. The newest value in `speaks` is the **current**
+major that new artifacts should target; every older entry is a major still inside
+its dual-running window.
+
+### Deprecation & dual-running policy
+
+- **A new major ships alongside the old.** When a breaking major `N+1` lands, the
+  build keeps speaking major `N` for a **dual-running window of at least one host
+  release cycle**, so a fleet can migrate without a flag day. During the window a
+  remote on `N` negotiates to `upgrade` (still read, but flagged for migration)
+  while `N+1` is `ok`.
+- **The transparency log records format-major usage,** so operators can watch
+  migration progress across the window and know when a major has drained.
+- **`protocol` defines only when a build _stops speaking_ a major.** A major is
+  retired from a build exactly when it leaves that build's `speaks` set; after
+  that, a remote on the dropped major negotiates to `refuse`, not `upgrade`.
+- ***Serving* retirement is out of scope here.** Whether a registry still
+  *distributes* artifacts on a retired major is a per-registry distribution-state
+  decision (registry spec §7), independent of whether a build will *read* one.
+
+Conformance vectors for the handshake are exported as `negotiateVectors` (run via
+`runConformanceVectors`) and mirrored as JSON fixtures under
+`test/vectors/negotiate/`, versioned by format major (SPEC §6).
+
 ## Releasing
 
 Versioning and publishing are driven by [changesets](https://github.com/changesets/changesets). The package ships ESM + type declarations under SemVer 0.x, publishing to npm as `@gridmason/protocol`.

@@ -18,6 +18,7 @@
  */
 
 import type { ContextMap, PageContext } from '../types/context.js';
+import type { FormatSupport, FormatVersion, NegotiationOutcome } from '../negotiate/index.js';
 import type { HashVerdict, MultihashString } from '../verify/index.js';
 import type {
   MigrateOptions,
@@ -78,6 +79,12 @@ export interface ConformanceSurface {
    * defaults to {@link import('../verify/hash/hash.js').verifyHash}.
    */
   readonly verifyHash?: (bytes: Uint8Array, expected: string) => Promise<HashVerdict>;
+  /**
+   * Decide `ok` | `upgrade` | `refuse` for a remote `formatVersion` given the
+   * majors a build speaks. Drives the sync negotiate group; defaults to
+   * {@link import('../negotiate/negotiate.js').negotiate}.
+   */
+  readonly negotiate?: (local: FormatSupport, remote: FormatVersion) => NegotiationOutcome;
 }
 
 /** A manifest schema-validity vector: does the manifest satisfy the schema? */
@@ -231,6 +238,23 @@ export interface HashWireVector {
   readonly expected: string;
   /** The stable verdict a conforming `verifyHash` must return. */
   readonly reason: HashVerdict['reason'];
+  readonly note?: string;
+}
+
+/**
+ * A format-version **negotiation** vector (SPEC §5, §6): given the majors a build
+ * `speaks` and a remote `formatVersion`, the `ok` | `upgrade` | `refuse` verdict
+ * a conforming {@link import('../negotiate/negotiate.js').negotiate} must return.
+ * Vectors are versioned by format major (SPEC §6) via {@link speaks}.
+ */
+export interface NegotiateVector {
+  readonly name: string;
+  /** The majors the negotiating build speaks; newest is its current major. */
+  readonly speaks: readonly number[];
+  /** The remote artifact's `major.minor` (or a deliberately malformed) version. */
+  readonly remote: FormatVersion;
+  /** The verdict a conforming negotiator must produce. */
+  readonly outcome: NegotiationOutcome;
   readonly note?: string;
 }
 

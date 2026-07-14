@@ -36,6 +36,7 @@ export {
 export { layoutVectors } from './layout.js';
 export { canonMalleabilityVectors, canonWireVectors } from './canon-wire.js';
 export { hashWireVectors } from './hash-wire.js';
+export { negotiateVectors } from './negotiate.js';
 
 export type {
   CanonMalleabilityVector,
@@ -54,6 +55,7 @@ export type {
   LayoutExpectation,
   LayoutVector,
   ManifestVector,
+  NegotiateVector,
   TagVector,
   VectorResult,
 } from './types.js';

@@ -1,0 +1,67 @@
+[
+  {
+    "name": "newer-major-than-spoken",
+    "note": "a major newer than any spoken is refused, not assumed back-compatible",
+    "speaks": [1],
+    "remote": "2.0",
+    "outcome": "refuse"
+  },
+  {
+    "name": "major-no-longer-spoken",
+    "note": "the dual-running window for major 1 has closed — the build stopped speaking it",
+    "speaks": [2, 3],
+    "remote": "1.0",
+    "outcome": "refuse"
+  },
+  {
+    "name": "gap-major-between-spoken",
+    "note": "major 2 is not in the speaks set even though it is below current",
+    "speaks": [1, 3],
+    "remote": "2.0",
+    "outcome": "refuse"
+  },
+  {
+    "name": "speaks-nothing",
+    "note": "a build that speaks no major reads nothing",
+    "speaks": [],
+    "remote": "1.0",
+    "outcome": "refuse"
+  },
+  {
+    "name": "malformed-missing-minor",
+    "note": "not a major.minor string — never guess the major",
+    "speaks": [1],
+    "remote": "1",
+    "outcome": "refuse"
+  },
+  {
+    "name": "malformed-trailing-dot",
+    "speaks": [1],
+    "remote": "1.",
+    "outcome": "refuse"
+  },
+  {
+    "name": "malformed-three-part",
+    "speaks": [1],
+    "remote": "1.0.0",
+    "outcome": "refuse"
+  },
+  {
+    "name": "malformed-prefixed",
+    "speaks": [1],
+    "remote": "v1.0",
+    "outcome": "refuse"
+  },
+  {
+    "name": "malformed-empty",
+    "speaks": [1],
+    "remote": "",
+    "outcome": "refuse"
+  },
+  {
+    "name": "malformed-non-numeric-minor",
+    "speaks": [1],
+    "remote": "1.x",
+    "outcome": "refuse"
+  }
+]

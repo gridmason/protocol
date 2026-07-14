@@ -1,0 +1,29 @@
+[
+  {
+    "name": "older-major-still-spoken",
+    "note": "major 1 is still spoken alongside newer major 2 (dual-running); readable, but migrate",
+    "speaks": [1, 2],
+    "remote": "1.0",
+    "outcome": "upgrade"
+  },
+  {
+    "name": "older-major-minor-irrelevant",
+    "note": "any minor of an older-but-spoken major upgrades",
+    "speaks": [1, 2],
+    "remote": "1.9",
+    "outcome": "upgrade"
+  },
+  {
+    "name": "middle-major-still-spoken",
+    "note": "major 2 sits below the current major 3 but is still spoken",
+    "speaks": [1, 2, 3],
+    "remote": "2.5",
+    "outcome": "upgrade"
+  },
+  {
+    "name": "oldest-of-three-majors",
+    "speaks": [1, 2, 3],
+    "remote": "1.0",
+    "outcome": "upgrade"
+  }
+]

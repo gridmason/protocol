@@ -3,6 +3,9 @@
  * speaks, and whether a remote's `formatVersion` is ok / needs upgrade /
  * must be refused. Refuses unknown majors rather than guessing.
  *
- * Placeholder — no negotiation logic yet; populated by the P-E1 (M1) epic.
+ * The `@gridmason/protocol/negotiate` subpath export (see package.json). The
+ * {@link FormatSupport} type declared here is the single description of the
+ * majors this build reads, shared with the `verify/` modules (SPEC §6).
  */
-export {};
+export { negotiate, PROTOCOL_FORMAT_SUPPORT } from './negotiate.js';
+export type { FormatSupport, FormatVersion, NegotiationOutcome } from './negotiate.js';

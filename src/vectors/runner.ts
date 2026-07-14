@@ -23,6 +23,7 @@
  */
 
 import { canonicalize } from '../canon/index.js';
+import { negotiate } from '../negotiate/index.js';
 import { hashBytes, verifyHash } from '../verify/index.js';
 import { isContextSubset, matchesContextMap } from '../types/context.js';
 import { isDevProxySdkRequest, isDevProxySdkResponse } from '../types/dev-proxy.js';
@@ -46,6 +47,7 @@ import {
 import { layoutVectors } from './layout.js';
 import { canonMalleabilityVectors, canonWireVectors } from './canon-wire.js';
 import { hashWireVectors } from './hash-wire.js';
+import { negotiateVectors } from './negotiate.js';
 import type { ConformanceReport, ConformanceSurface, VectorResult } from './types.js';
 
 /**
@@ -69,6 +71,7 @@ export function runConformanceVectors(surface: ConformanceSurface = {}): Conform
   const isProxyRequest = surface.isDevProxySdkRequest ?? isDevProxySdkRequest;
   const isProxyResponse = surface.isDevProxySdkResponse ?? isDevProxySdkResponse;
   const canon = surface.canonicalize ?? canonicalize;
+  const negotiateFn = surface.negotiate ?? negotiate;
 
   for (const v of manifestVectors) {
     const actual = validateManifest(v.manifest);
@@ -152,6 +155,11 @@ export function runConformanceVectors(surface: ConformanceSurface = {}): Conform
     // Every presentation variant must collapse to the one pinned canonical form.
     const ok = forms.every((form) => form === v.canonicalHex);
     results.push(record('canon-malleability', v.name, ok, `expected all → ${v.canonicalHex}, got [${forms.join(', ')}]`));
+  }
+
+  for (const v of negotiateVectors) {
+    const actual = negotiateFn({ speaks: v.speaks }, v.remote);
+    results.push(record('negotiate', v.name, actual === v.outcome, `expected ${v.outcome}, got ${actual}`));
   }
 
   return report(results);

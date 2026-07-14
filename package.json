@@ -44,7 +44,8 @@
       "import": "./dist/vectors/index.js"
     },
     "./schemas/manifest.json": "./schemas/manifest.schema.json",
-    "./schemas/revocation-feed.json": "./schemas/revocation-feed.schema.json"
+    "./schemas/revocation-feed.json": "./schemas/revocation-feed.schema.json",
+    "./schemas/trust-root.json": "./schemas/trust-root.schema.json"
   },
   "files": [
     "dist",

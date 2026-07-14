@@ -4,8 +4,8 @@
  * revocation & kill feed, trust-root document, offline bundle. TypeScript is the
  * authoring surface; the JSON Schemas under `schemas/` are generated (FR-5).
  *
- * The revocation & kill feed (§4.3) has landed; the remaining wire formats are
- * populated by their P-E3 leaf issues.
+ * The revocation & kill feed (§4.3) and trust-root document (§4.4) have landed;
+ * the remaining wire formats are populated by their P-E3 leaf issues.
  */
 export type {
   ArtifactState,
@@ -14,3 +14,4 @@ export type {
   RevocationFeed,
   RevocationSeverity,
 } from './revocation.js';
+export type { TrustRootDoc } from './trust-root.js';

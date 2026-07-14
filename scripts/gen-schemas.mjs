@@ -12,7 +12,12 @@ import {
   REVOCATION_SCHEMA_PATH,
   generateRevocationSchema,
 } from './revocation-schema.mjs';
+import {
+  TRUST_ROOT_SCHEMA_PATH,
+  generateTrustRootSchema,
+} from './trust-root-schema.mjs';
 
 mkdirSync(path.dirname(MANIFEST_SCHEMA_PATH), { recursive: true });
 writeFileSync(MANIFEST_SCHEMA_PATH, serializeSchema(generateManifestSchema()));
 writeFileSync(REVOCATION_SCHEMA_PATH, serializeSchema(generateRevocationSchema()));
+writeFileSync(TRUST_ROOT_SCHEMA_PATH, serializeSchema(generateTrustRootSchema()));

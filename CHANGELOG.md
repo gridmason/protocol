@@ -1,5 +1,102 @@
 # @gridmason/protocol
 
+## 0.2.0
+
+### Minor Changes
+
+- bf67543: P-E4 `.gmb` offline bundle format + offline verification (FR-13, issue #22, SPEC
+  §4.5). Adds the `GmbBundle` wire type (`@gridmason/protocol` +
+  `@gridmason/protocol/types`) — a signed, self-verifying archive for air-gapped
+  hosts packing the manifest, servable file bytes (entry + chunks + schemas +
+  docs), the signature envelope with embedded log-inclusion proof, the embedded
+  trust-root document, a bundle-level content hash, and a `producedBy` registry id
+  — plus its generated JSON Schema (`@gridmason/protocol/schemas/gmb-bundle.json`).
+
+  Adds `verifyOfflineBundle(input)` under `@gridmason/protocol` and
+  `@gridmason/protocol/verify`: it seals the archive by recomputing the bundle-level
+  content hash over the canonical payload, then composes the **identical**
+  `verifyRelease` chain (dual signature, embedded inclusion proof, content hashes)
+  sourced entirely from the bundle and checked against **pinned roots only** — no
+  network of any kind. It returns the same `url → hash` verdict shape as the online
+  path and every stable `VerifyReleaseReason` unchanged (a bundle whose embedded
+  root is not pinned refuses with the same `trust-root-untrusted` as the online
+  unpinned case), adding two archive-integrity classes: `bundle-malformed` and
+  `bundle-hash-tampered`. Held at the 100% verify-core coverage gate.
+
+- 5df9378: P-E4 negative-vector completion sweep + verify/canon coverage audit (FR-15, issue
+  #24, SPEC §7/§8) — the milestone-M-B exit for the verify library. Completes the
+  SPEC §7 negative set as **published** conformance vectors runnable by any consumer
+  (core / cli / registry / dashboard) in one import through the shared vector-runner,
+  so a divergent implementation that "passes" a tampered vector fails its own CI
+  rather than production.
+
+  Four negatives graduate from test-only fixtures into `@gridmason/protocol/vectors`,
+  joining the already-published tampered-hash (`hash-wire`) negative to close the
+  full SPEC §7 list — **wrong issuer**, **expired root**, **forked log**, and
+  **stale-past-TTL feed**:
+
+  - `signatureVectors` (`signature` group) — a frozen, recorded ECDSA-P256
+    dual-signed envelope plus the two wrong-issuer refusals
+    (`publisher-issuer-not-allowlisted`, `publisher-issuer-mismatch`).
+  - `trustRootVectors` (`trust-root` group) — pinned-valid / rotation-overlap
+    positives and the `expired` root refusal.
+  - `logConsistencyVectors` (`log-consistency` group) — an honest 5→8 growth proof
+    and the forked-log `consistency-proof-invalid` refusal.
+  - `freshnessVectors` (`freshness` group) — fresh / multi-registry-scoping
+    positives and the `stale` past-TTL refusal.
+
+  `ConformanceSurface` gains the matching injectable members (`verifySignatureEnvelope`,
+  `evaluateTrustRoot`, `verifyLogConsistency`, `evaluateFreshness`); the sync
+  `runConformanceVectors` now also runs the trust-root and freshness groups, and
+  `runConformanceVectorsAsync` appends the WebCrypto signature and log-consistency
+  groups. The report shape is unchanged. The new vector types (`SignatureVector`,
+  `TrustRootVector`, `LogConsistencyVector`, `FreshnessVector`) are exported.
+
+  The verify/canon security core is audited at 100% lines **and** branches (all 24
+  files), and a `test/coverage-gate.test.ts` meta-test pins the `vitest.config.ts`
+  threshold to both directories on every metric so the gate cannot be silently
+  weakened.
+
+- eb179ae: P-E4 format-version negotiation + deprecation/dual-running policy (FR-16, issue
+  #23, SPEC §5/§6). Adds `negotiate(local, remote)` under `@gridmason/protocol` and
+  `@gridmason/protocol/negotiate`: given the format majors a build speaks
+  (`FormatSupport`) and a remote artifact's `major.minor` `formatVersion`, it
+  returns a stable `'ok' | 'upgrade' | 'refuse'` verdict — `ok` for the current
+  major (any minor is additive/back-compatible), `upgrade` for an older major still
+  inside its dual-running window (readable, but the peer should migrate), and
+  `refuse` for a major newer than any spoken, a major no longer spoken, or a
+  malformed version. It never guesses: an unparseable version refuses.
+
+  Exports the `FormatSupport` / `FormatVersion` / `NegotiationOutcome` types and
+  `PROTOCOL_FORMAT_SUPPORT` (the majors this build speaks — `1`, matching the
+  `verify/` hot path). Pure and isomorphic (no I/O, no clock, no key handling). The
+  handshake joins the shared conformance corpus as `negotiateVectors` (run through
+  `runConformanceVectors`, so a divergent implementation fails a shared test) and
+  is mirrored as JSON fixtures under `test/vectors/negotiate/`, versioned by format
+  major. The README documents the deprecation / dual-running policy: a new major
+  ships alongside the old for at least one host release cycle, the transparency log
+  records format-major usage, `protocol` defines only when a build stops speaking a
+  major, and _serving_ retirement is a per-registry decision (out of scope).
+
+### Patch Changes
+
+- 8e1f42d: Ratify the rotation `crossSig` contract in the SPEC and wire docs (issue #57,
+  follow-up to #20). SPEC §4.4 now pins the exact contract the `verifyCrossSig`
+  check implemented: the signed **preimage** is the RFC-8785 canonical bytes of
+  the trust-root document with its own `crossSig` field removed, and the base64
+  ECDSA P-256 / SHA-256 signature is accepted when it verifies (WebCrypto) under
+  any of the operator's pinned countersign root keys — every failure mapping to
+  the single `trust-root-rotation-invalid` reason. The `TrustRootDoc.crossSig` doc
+  comment carries the same ratification, so the generated
+  `trust-root.schema.json` description is updated (the only shipped-artifact
+  change). SPEC §5 records the shape shipped in P-E3: `verifyRelease` /
+  `verifyChunk` are async (WebCrypto-only), `VerifyReleaseInput` carries concrete
+  leaf inputs against a hard-pinned log checkpoint key (GW-D17), and `ReleaseDoc`
+  lives in the verify module hash-bound to the signed subject rather than
+  schema-validated. Adds the frozen `test/vectors/trust/crosssig-preimage.json`
+  conformance vector (valid document + single-byte-mutated negative). Docs and one
+  vector only — no behavior change.
+
 ## 0.1.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@gridmason/protocol",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Gridmason contracts + verification library: the types, wire formats, and pure verify core every host, CLI, and registry meet on.",
   "license": "AGPL-3.0-only",
   "repository": {

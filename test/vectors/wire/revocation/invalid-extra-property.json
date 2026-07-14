@@ -1,0 +1,9 @@
+{
+  "formatVersion": "1.0",
+  "registryId": "registry.gridmason.dev",
+  "seq": 8,
+  "issuedAt": 1704067200000,
+  "ttlSeconds": 3600,
+  "entries": [],
+  "signature": "not-part-of-the-feed-shape"
+}

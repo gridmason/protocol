@@ -28,6 +28,12 @@ import {
   GMB_BUNDLE_SCHEMA_PATH,
   generateGmbBundleSchema,
 } from './bundle-schema.mjs';
+import {
+  GATE_SNAPSHOT_SCHEMA_PATH,
+  IMPORT_MAP_FRAGMENT_SCHEMA_PATH,
+  generateGateSnapshotSchema,
+  generateImportMapFragmentSchema,
+} from './resolution-schema.mjs';
 
 for (const [schemaPath, schema] of [
   [MANIFEST_SCHEMA_PATH, generateManifestSchema()],
@@ -36,6 +42,8 @@ for (const [schemaPath, schema] of [
   [LOG_ENTRY_SCHEMA_PATH, generateLogEntrySchema()],
   [TRUST_ROOT_SCHEMA_PATH, generateTrustRootSchema()],
   [GMB_BUNDLE_SCHEMA_PATH, generateGmbBundleSchema()],
+  [GATE_SNAPSHOT_SCHEMA_PATH, generateGateSnapshotSchema()],
+  [IMPORT_MAP_FRAGMENT_SCHEMA_PATH, generateImportMapFragmentSchema()],
 ]) {
   mkdirSync(path.dirname(schemaPath), { recursive: true });
   writeFileSync(schemaPath, serializeSchema(schema));

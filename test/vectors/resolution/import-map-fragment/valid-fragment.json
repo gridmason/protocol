@@ -1,0 +1,70 @@
+{
+  "registry": "registry.gridmason.dev",
+  "imports": {
+    "registry.gridmason.dev/acme-chart": "/v1/artifacts/sha2-256:32d05fbeb9ac076f2e8d886b0c844db25d62f82915f7226ff7522a51d8dfbf41"
+  },
+  "scopes": {
+    "/v1/artifacts/sha2-256:32d05fbeb9ac076f2e8d886b0c844db25d62f82915f7226ff7522a51d8dfbf41": {
+      "react": "/vendor/react@17.js"
+    }
+  },
+  "modules": [
+    {
+      "source": "registry.gridmason.dev",
+      "publisher": "acme",
+      "tag": "acme-chart",
+      "version": "2.3.1",
+      "specifier": "registry.gridmason.dev/acme-chart",
+      "url": "/v1/artifacts/sha2-256:32d05fbeb9ac076f2e8d886b0c844db25d62f82915f7226ff7522a51d8dfbf41",
+      "bundle": {
+        "release": {
+          "formatVersion": "1.0",
+          "artifact": "acme-chart@2.3.1",
+          "files": {
+            "index.js": "sha2-256:32d05fbeb9ac076f2e8d886b0c844db25d62f82915f7226ff7522a51d8dfbf41",
+            "chunk-1.js": "sha2-256:5252d6afdf8aef6787ff657136f76f87562602d7836cf9b2c32a6085046abcb0"
+          }
+        },
+        "envelope": {
+          "formatVersion": "1.0",
+          "subject": {
+            "artifact": "acme-chart@2.3.1",
+            "releaseHash": "sha2-256:32d05fbeb9ac076f2e8d886b0c844db25d62f82915f7226ff7522a51d8dfbf41"
+          },
+          "publisherSig": {
+            "alg": "ES256",
+            "cert": "MIIBNTCB26ADAgECAgEBMAoGCCqGSM49BAMCMAAwHhcNMjQwMTAxMDAwMDAwWhcNMzQwMTAxMDAwMDAwWjAAMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAECzDtfW0tiJRe7YPQdUgz65mST380WKR2lWmUZhgnCMD1ZPdFFPYRUkjkMFi1jneXrQiIAOXiUZH7Unurac9BtqNGMEQwKQYKKwYBBAGDvzABAQQbaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tMBcGA1UdEQQQMA6BDGRldkBhY21lLmNvbTAKBggqhkjOPQQDAgNJADBGAiEArR8lsWA6Hen12uLd9MVA68fAAW16DXc1jmOKXie98QUCIQD1SRxkQwZv8V+IE7WGvePR4JytIKcNzmcJJmdQvxnxLA==",
+            "issuer": "https://accounts.google.com",
+            "subjectClaims": { "email": "dev@acme.com" },
+            "sig": "poDzjCEMDDbvVIj1/hkc3csEWbEBJXWFEPRbZKUteG8wczGGUN7bH3dcx331bwx7HBM0TYJ/0NmvdALL6HIk1A=="
+          },
+          "registrySig": {
+            "alg": "ES256",
+            "cert": "MIHsMIGToAMCAQICAQEwCgYIKoZIzj0EAwIwADAeFw0yNDAxMDEwMDAwMDBaFw0zNDAxMDEwMDAwMDBaMAAwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQOLkp9yNXjrZoqLsrqKfeuWfZvokR79k5gk524BRpLME9GtNAUDg79i3EIVdZtY6x3UeSiPGzAobCR4rz190pIMAoGCCqGSM49BAMCA0gAMEUCICXI29dYzDLnbnSdjk/c/XiUXiuVv7LvRkJXRaQzY1EIAiEAvF86iVIvlAQDwcpLIZDkO85/4yKipBA8+ruOEISqgiY=",
+            "sig": "9yzUErUnjg197hklDkKrtQ5OQ4BtKaXSiY9i0OTlOYDPbRdNvJWOy/9Ahc0P1XpyW87+4PQSzXr9SPc+WVRGgA=="
+          },
+          "logInclusion": { "logId": "rekor.example", "index": 88421, "proof": [] }
+        },
+        "logEntry": {
+          "logId": "e76604b23bcf585db509e04e004493783d40ca603611f2e566d22bf62bf983a1",
+          "index": 3,
+          "integratedTime": 1700000000,
+          "canonicalBody": "Z3JpZG1hc29uIGVudHJ5IDM=",
+          "inclusionProof": {
+            "treeSize": 8,
+            "rootHash": "2f79d15e9cb5af0ba446eb17d013f8c3f73cfb6b5643bc4e72f026f4e7389d54",
+            "hashes": [
+              "dc07b00a8650d93355e3832e3089a0061e8233708508fdd3f9f8738e1a3c36d8",
+              "c906076f1a32216abaea4747fb9bc9ab68c89e3237c90aaebc1604c0d94b7597",
+              "5252d6afdf8aef6787ff657136f76f87562602d7836cf9b2c32a6085046abcb0"
+            ]
+          },
+          "checkpoint": "gridmason.test/log\n8\nL3nRXpy1rwukRusX0BP4w/c8+2tWQ7xOcvAm9Oc4nVQ=\n\n— gridmason.test/log FgRm46ytc1tmNups0fT9aRsjJQC7Bl+t8tl/NbnxPR4gj+wr2oJ1n/b+9jX1c+9Tp1ru+sr14wJgwVOjaCbt6hQ4ZQk=\n"
+        }
+      }
+    }
+  ],
+  "excluded": [
+    { "publisher": "acme", "tag": "acme-map", "version": "9.9.9", "reason": "unknown_module" }
+  ]
+}

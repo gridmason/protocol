@@ -10,12 +10,20 @@
  * Framework-agnostic: it returns a {@link ConformanceReport} rather than calling
  * any test framework, so the caller asserts with its own `expect`.
  *
- * Phase A ships the **type** vectors below. The security **wire-format**
- * negatives (tampered hash, wrong issuer, expired root, forked log, stale feed)
- * are Phase B (FR-15, P-E2 / P-E4): add a `wire-*` group here and the matching
- * verify members to {@link ConformanceSurface} — the report shape does not change.
+ * Two entry points share one report shape:
+ * - {@link runConformanceVectors} (sync) — the type vectors plus the canon-wire
+ *   byte vectors (canonicalization is synchronous).
+ * - {@link runConformanceVectorsAsync} (async) — the full corpus: it awaits the
+ *   sync set and appends the content-hash group, whose `hashBytes`/`verifyHash`
+ *   are async. A consumer needing hash conformance uses this; both are one import.
+ *
+ * The remaining Phase-B negatives (wrong issuer, expired root, forked log, stale
+ * feed) are P-E4: add a group here and the matching {@link ConformanceSurface}
+ * member — the report shape does not change.
  */
 
+import { canonicalize } from '../canon/index.js';
+import { hashBytes, verifyHash } from '../verify/index.js';
 import { isContextSubset, matchesContextMap } from '../types/context.js';
 import { isDevProxySdkRequest, isDevProxySdkResponse } from '../types/dev-proxy.js';
 import { MigratorRegistry, migrate } from '../types/layout.js';
@@ -36,6 +44,8 @@ import {
   devProxyResponseVectors,
 } from './dev-proxy.js';
 import { layoutVectors } from './layout.js';
+import { canonMalleabilityVectors, canonWireVectors } from './canon-wire.js';
+import { hashWireVectors } from './hash-wire.js';
 import type { ConformanceReport, ConformanceSurface, VectorResult } from './types.js';
 
 /**
@@ -58,6 +68,7 @@ export function runConformanceVectors(surface: ConformanceSurface = {}): Conform
   const grants = surface.grantsCapability ?? grantsCapability;
   const isProxyRequest = surface.isDevProxySdkRequest ?? isDevProxySdkRequest;
   const isProxyResponse = surface.isDevProxySdkResponse ?? isDevProxySdkResponse;
+  const canon = surface.canonicalize ?? canonicalize;
 
   for (const v of manifestVectors) {
     const actual = validateManifest(v.manifest);
@@ -131,6 +142,54 @@ export function runConformanceVectors(surface: ConformanceSurface = {}): Conform
     results.push(record('layout-migrate', v.name, ok, detail));
   }
 
+  for (const v of canonWireVectors) {
+    const actual = bytesToHex(canon(v.value));
+    results.push(record('canon-wire', v.name, actual === v.canonicalHex, `expected ${v.canonicalHex}, got ${actual}`));
+  }
+
+  for (const v of canonMalleabilityVectors) {
+    const forms = v.jsonVariants.map((text) => bytesToHex(canon(JSON.parse(text))));
+    // Every presentation variant must collapse to the one pinned canonical form.
+    const ok = forms.every((form) => form === v.canonicalHex);
+    results.push(record('canon-malleability', v.name, ok, `expected all → ${v.canonicalHex}, got [${forms.join(', ')}]`));
+  }
+
+  return report(results);
+}
+
+/**
+ * Run the full conformance corpus, including the async content-hash group, and
+ * report every verdict. Extends {@link runConformanceVectors} (whose sync groups
+ * it reuses, then appends) with the `hash-wire` group, whose `hashBytes`/`verifyHash`
+ * are async. A consumer that verifies content hashes runs this in its own CI with
+ * one import so a divergent hash implementation fails a shared test (SPEC §6, §7).
+ *
+ * @param surface Consumer implementations to test; omit for the package's own.
+ * @returns A {@link ConformanceReport}; assert on `report.ok` with `report.failures`.
+ */
+export async function runConformanceVectorsAsync(
+  surface: ConformanceSurface = {},
+): Promise<ConformanceReport> {
+  const sync = runConformanceVectors(surface);
+  const results: VectorResult[] = [...sync.results];
+
+  const hash = surface.hashBytes ?? hashBytes;
+  const verify = surface.verifyHash ?? verifyHash;
+
+  for (const v of hashWireVectors) {
+    const bytes = hexToBytes(v.inputHex);
+    const verdict = await verify(bytes, v.expected);
+    let ok = verdict.reason === v.reason;
+    let detail = `expected reason=${v.reason}, got ${verdict.reason}`;
+    // A positive vector also pins the raw digest: hashBytes must equal `expected`.
+    if (ok && v.reason === 'ok') {
+      const computed = await hash(bytes);
+      ok = computed === v.expected;
+      detail = `expected hashBytes=${v.expected}, got ${computed}`;
+    }
+    results.push(record('hash-wire', v.name, ok, detail));
+  }
+
   return report(results);
 }
 
@@ -152,6 +211,20 @@ function report(results: VectorResult[]): ConformanceReport {
     ? `${passed}/${total} conformance vectors passed`
     : `${total - passed}/${total} conformance vectors FAILED`;
   return { ok, total, passed, results, summary, failures };
+}
+
+/** Lowercase-hex encode bytes — the wire form the canon vectors pin. */
+function bytesToHex(bytes: Uint8Array): string {
+  let hex = '';
+  for (const byte of bytes) hex += byte.toString(16).padStart(2, '0');
+  return hex;
+}
+
+/** Decode a lowercase-hex fixture string to its bytes. */
+function hexToBytes(hex: string): Uint8Array {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return out;
 }
 
 /** Order-independent equality of two code lists. */

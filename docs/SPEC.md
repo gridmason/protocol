@@ -151,6 +151,10 @@ The verify lib checks **both signatures + content hash + log inclusion** before 
 ```
 
 - **Two pinning channels**, both never-fetch-blind-at-runtime (registry §2): **build-time** (shipped in the host build) and **deploy-time** (operator-supplied config/secret). `trust/` parses + validates a pinned root and evaluates **overlap-window rotation** (accept old-or-new during overlap, drop old on next release). The lib refuses to trust a root supplied over the network without a pin.
+- **Rotation `crossSig` (ratified from #20).** The overlap document's `crossSig` is the outgoing root's cryptographic authorization of the incoming one. `trust/` carries the field through structurally (it holds no signature primitive); `verify/release` composes the check in the `verifyRelease` orchestrator. The contract is exact:
+  - **Preimage** — the **RFC-8785 (JCS, `canon/`) canonical bytes of the trust-root document with its own `crossSig` field removed** (a signature can never cover itself). The preimage is derived from the *raw received* document, not a narrowed view, so it is byte-identical to what the registry signed regardless of any additional wire fields present.
+  - **Signer resolution** — `crossSig` is a base64 **ECDSA P-256 / SHA-256** signature in IEEE-P1363 (`r || s`, 64 bytes) form. It is accepted when it verifies (WebCrypto) under **any one of the operator's pinned countersign root keys** (the same SPKI-DER material the dual-signature approval check pins) — the "issued by a pinned root" rule applied to rotation.
+  - **Fail-closed** — a missing `crossSig` on an overlap document, a non-base64 or wrong-length signature, a document that will not canonicalize, or no pinned key that verifies each map to the single `trust-root-rotation-invalid` reason; no throw, no partial trust. The frozen conformance vector is `test/vectors/trust/crosssig-preimage.json` (valid document + single-byte-mutated negative).
 
 ### 4.5 Offline bundle (`.gmb`)
 
@@ -161,24 +165,29 @@ Signed, self-verifying archive for air-gapped hosts: manifest + `entry` module +
 The one piece of executable code every host runs on the security hot path. **Pure, isomorphic, no I/O** — the caller fetches bytes; the lib decides.
 
 ```ts
-// Given a release document + its signature envelope + pinned trust roots,
+// Given a release document + its signature envelope + pinned trust anchors,
 // decide whether every listed artifact may load, and return the URL→hash map
-// the Service Worker enforces.
+// the Service Worker enforces. Async: WebCrypto's verify primitives are async.
 verifyRelease(input: {
-  release: ReleaseDoc,
-  envelope: SignatureEnvelope,
-  roots: TrustRoot[],          // pinned (build- or deploy-time)
-  logCheckpoint: Checkpoint,
-  now: number,                 // caller supplies clock — keeps the lib pure
-}): VerifyResult   // { ok, urlHashes: Map<url,hash>, issuer, subject } | { ok:false, reason }
+  release: ReleaseDoc,               // artifact id + { url → content-hash } map
+  envelope: SignatureEnvelope,       // detached dual signature over the release
+  trustRoot: unknown,                // untrusted, network-delivered; gated by `pins`
+  pins: TrustRootPin[],              // operator's out-of-band pins (build-/deploy-time)
+  publisherCARoots: Uint8Array[],    // pinned publisher CA roots (SPKI DER)
+  countersignRoots: Uint8Array[],    // pinned registry roots (SPKI DER); also cross-signers
+  logEntry: TransparencyLogEntry,    // Rekor-shaped inclusion evidence
+  logPublicKey: LogPublicKey,        // hard-pinned checkpoint key (GW-D17)
+  now: number,                       // caller supplies clock — keeps the lib pure
+}): Promise<VerifyResult>   // { ok, urlHashes: Map<url,hash>, issuer, subject } | { ok:false, reason }
 
-verifyChunk(bytes: Uint8Array, expectedHash: Hash): boolean          // SW per-fetch check
+verifyChunk(bytes: Uint8Array, expectedHash: Hash): Promise<boolean>   // SW per-fetch check (async: WebCrypto)
 evaluateFreshness(feed: RevocationFeed, cursor: Cursor, now): FreshnessVerdict  // fail-closed rule
 negotiate(local: FormatSupport, remote: FormatVersion): 'ok'|'upgrade'|'refuse'
 ```
 
 - Every `reason` is a **stable enum** (not a free-form string) so hosts render consistent, non-leaky error boundaries and telemetry aggregates cleanly.
 - The lib **never** takes a URL and fetches it; **never** takes a private key. Signing lives in the CLI/registry; the lib is the verify half only. This keeps the attack surface of the most-pinned package minimal.
+- **Shipped shape (P-E3, #20).** `verifyRelease` and `verifyChunk` are **async** — the verify core is WebCrypto-only (no Node `crypto`), so every signature/hash primitive returns a `Promise`, keeping the package isomorphic. `VerifyReleaseInput` carries **concrete leaf inputs** rather than an abstract `roots` bag: the untrusted `trustRoot` document plus its authorizing `pins`, the two pinned root-key sets (`publisherCARoots`, `countersignRoots`), and the transparency-log evidence as a full `logEntry` checked against a **hard-pinned `logPublicKey` checkpoint key (GW-D17)** — no in-band key discovery. `ReleaseDoc` is defined in the `verify` module and, unlike the other wire formats, ships **without a JSON Schema**: its integrity is hash-binding, not schema validation — its canonical bytes must hash to the signature envelope's `subject.releaseHash`, so a tampered document breaks the signature rather than a schema check.
 
 ## 6. Format lifecycle & negotiation
 

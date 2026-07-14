@@ -36,6 +36,11 @@ export {
 export { layoutVectors } from './layout.js';
 export { canonMalleabilityVectors, canonWireVectors } from './canon-wire.js';
 export { hashWireVectors } from './hash-wire.js';
+export { negotiateVectors } from './negotiate.js';
+export { signatureVectors } from './signature.js';
+export { trustRootVectors } from './trust.js';
+export { logConsistencyVectors } from './log.js';
+export { freshnessVectors } from './freshness.js';
 
 export type {
   CanonMalleabilityVector,
@@ -50,10 +55,15 @@ export type {
   ContextVector,
   DevProxyRequestVector,
   DevProxyResponseVector,
+  FreshnessVector,
   HashWireVector,
   LayoutExpectation,
   LayoutVector,
+  LogConsistencyVector,
   ManifestVector,
+  NegotiateVector,
+  SignatureVector,
   TagVector,
+  TrustRootVector,
   VectorResult,
 } from './types.js';

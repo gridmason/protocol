@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { evaluateFreshness } from '../../../src/verify/freshness/index.js';
-import { freshnessVectors } from './scenarios.js';
+import { freshnessVectors } from '../../../src/vectors/freshness.js';
 
 // SPEC §4.3/§5 (FR-11): the shipped freshness scenarios must reproduce exactly on
 // this package's own `evaluateFreshness`. Exhaustive branch/edge coverage lives in

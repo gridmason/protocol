@@ -1,0 +1,30 @@
+[
+  {
+    "name": "current-major-exact",
+    "note": "remote is on the exact current major.minor this build speaks",
+    "speaks": [1],
+    "remote": "1.0",
+    "outcome": "ok"
+  },
+  {
+    "name": "current-major-higher-minor",
+    "note": "a higher minor within the current major is additive/back-compatible",
+    "speaks": [1],
+    "remote": "1.12",
+    "outcome": "ok"
+  },
+  {
+    "name": "current-major-is-newest-spoken",
+    "note": "newest spoken major (2) is current; a 2.x remote reads as-is",
+    "speaks": [1, 2],
+    "remote": "2.4",
+    "outcome": "ok"
+  },
+  {
+    "name": "speaks-order-independent",
+    "note": "the newest value in speaks is current regardless of list order",
+    "speaks": [3, 1, 2],
+    "remote": "3.0",
+    "outcome": "ok"
+  }
+]

@@ -12,18 +12,28 @@
  *
  * Two entry points share one report shape:
  * - {@link runConformanceVectors} (sync) — the type vectors plus the canon-wire
- *   byte vectors (canonicalization is synchronous).
+ *   byte vectors and the trust-root + freshness groups (all synchronous).
  * - {@link runConformanceVectorsAsync} (async) — the full corpus: it awaits the
- *   sync set and appends the content-hash group, whose `hashBytes`/`verifyHash`
- *   are async. A consumer needing hash conformance uses this; both are one import.
+ *   sync set and appends the WebCrypto groups (content-hash, dual-signature
+ *   envelope, and log-consistency), whose primitives are async. A consumer
+ *   needing the crypto negatives uses this; both are one import.
  *
- * The remaining Phase-B negatives (wrong issuer, expired root, forked log, stale
- * feed) are P-E4: add a group here and the matching {@link ConformanceSurface}
- * member — the report shape does not change.
+ * The full SPEC §7 negative set is now published and runnable here: **tampered
+ * hash** (hash-wire), **wrong issuer** (signature), **expired root** (trust-root),
+ * **forked log** (log-consistency), and **stale-past-TTL feed** (freshness) — a
+ * consumer that "passes" any of them fails its build (SPEC §6, §7; FR-15).
  */
 
 import { canonicalize } from '../canon/index.js';
-import { hashBytes, verifyHash } from '../verify/index.js';
+import { negotiate } from '../negotiate/index.js';
+import {
+  evaluateFreshness,
+  evaluateTrustRoot,
+  hashBytes,
+  verifyHash,
+  verifyLogConsistency,
+  verifySignatureEnvelope,
+} from '../verify/index.js';
 import { isContextSubset, matchesContextMap } from '../types/context.js';
 import { isDevProxySdkRequest, isDevProxySdkResponse } from '../types/dev-proxy.js';
 import { MigratorRegistry, migrate } from '../types/layout.js';
@@ -46,6 +56,11 @@ import {
 import { layoutVectors } from './layout.js';
 import { canonMalleabilityVectors, canonWireVectors } from './canon-wire.js';
 import { hashWireVectors } from './hash-wire.js';
+import { negotiateVectors } from './negotiate.js';
+import { signatureVectors } from './signature.js';
+import { trustRootVectors } from './trust.js';
+import { logConsistencyVectors } from './log.js';
+import { freshnessVectors } from './freshness.js';
 import type { ConformanceReport, ConformanceSurface, VectorResult } from './types.js';
 
 /**
@@ -69,6 +84,9 @@ export function runConformanceVectors(surface: ConformanceSurface = {}): Conform
   const isProxyRequest = surface.isDevProxySdkRequest ?? isDevProxySdkRequest;
   const isProxyResponse = surface.isDevProxySdkResponse ?? isDevProxySdkResponse;
   const canon = surface.canonicalize ?? canonicalize;
+  const negotiateFn = surface.negotiate ?? negotiate;
+  const evalTrust = surface.evaluateTrustRoot ?? evaluateTrustRoot;
+  const evalFreshness = surface.evaluateFreshness ?? evaluateFreshness;
 
   for (const v of manifestVectors) {
     const actual = validateManifest(v.manifest);
@@ -154,15 +172,31 @@ export function runConformanceVectors(surface: ConformanceSurface = {}): Conform
     results.push(record('canon-malleability', v.name, ok, `expected all → ${v.canonicalHex}, got [${forms.join(', ')}]`));
   }
 
+  for (const v of negotiateVectors) {
+    const actual = negotiateFn({ speaks: v.speaks }, v.remote);
+    results.push(record('negotiate', v.name, actual === v.outcome, `expected ${v.outcome}, got ${actual}`));
+  }
+
+  for (const v of trustRootVectors) {
+    const actual = evalTrust(v.doc, v.pins, v.now);
+    results.push(record('trust-root', v.name, deepEqual(actual, v.expected), `expected ${JSON.stringify(v.expected)}, got ${JSON.stringify(actual)}`));
+  }
+
+  for (const v of freshnessVectors) {
+    const actual = evalFreshness(v.feed, v.cursor, v.now);
+    results.push(record('freshness', v.name, deepEqual(actual, v.expected), `expected ${JSON.stringify(v.expected)}, got ${JSON.stringify(actual)}`));
+  }
+
   return report(results);
 }
 
 /**
- * Run the full conformance corpus, including the async content-hash group, and
+ * Run the full conformance corpus, including the async WebCrypto groups, and
  * report every verdict. Extends {@link runConformanceVectors} (whose sync groups
- * it reuses, then appends) with the `hash-wire` group, whose `hashBytes`/`verifyHash`
- * are async. A consumer that verifies content hashes runs this in its own CI with
- * one import so a divergent hash implementation fails a shared test (SPEC §6, §7).
+ * it reuses, then appends) with the `hash-wire`, `signature`, and
+ * `log-consistency` groups, whose primitives are async. A consumer that verifies
+ * content hashes, release signatures, or log proofs runs this in its own CI with
+ * one import so a divergent implementation fails a shared test (SPEC §6, §7).
  *
  * @param surface Consumer implementations to test; omit for the package's own.
  * @returns A {@link ConformanceReport}; assert on `report.ok` with `report.failures`.
@@ -175,6 +209,8 @@ export async function runConformanceVectorsAsync(
 
   const hash = surface.hashBytes ?? hashBytes;
   const verify = surface.verifyHash ?? verifyHash;
+  const verifySignature = surface.verifySignatureEnvelope ?? verifySignatureEnvelope;
+  const verifyLog = surface.verifyLogConsistency ?? verifyLogConsistency;
 
   for (const v of hashWireVectors) {
     const bytes = hexToBytes(v.inputHex);
@@ -188,6 +224,16 @@ export async function runConformanceVectorsAsync(
       detail = `expected hashBytes=${v.expected}, got ${computed}`;
     }
     results.push(record('hash-wire', v.name, ok, detail));
+  }
+
+  for (const v of signatureVectors) {
+    const verdict = await verifySignature(v.input);
+    results.push(record('signature', v.name, verdict.reason === v.reason, `expected reason=${v.reason}, got ${verdict.reason}`));
+  }
+
+  for (const v of logConsistencyVectors) {
+    const verdict = await verifyLog(v.input);
+    results.push(record('log-consistency', v.name, verdict.reason === v.reason, `expected reason=${v.reason}, got ${verdict.reason}`));
   }
 
   return report(results);

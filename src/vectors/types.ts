@@ -18,7 +18,22 @@
  */
 
 import type { ContextMap, PageContext } from '../types/context.js';
-import type { HashVerdict, MultihashString } from '../verify/index.js';
+import type { FormatSupport, FormatVersion, NegotiationOutcome } from '../negotiate/index.js';
+import type {
+  FreshnessVerdict,
+  HashVerdict,
+  LogConsistencyInput,
+  LogVerdict,
+  LogVerdictReason,
+  MultihashString,
+  SignatureVerdict,
+  SignatureVerdictReason,
+  TrustRootPin,
+  TrustRootVerdict,
+  VerifySignatureInput,
+} from '../verify/index.js';
+import type { Cursor, RevocationFeed } from '../types/wire/revocation.js';
+import type { TrustRootDoc } from '../types/wire/trust-root.js';
 import type {
   MigrateOptions,
   MigrateResult,
@@ -78,6 +93,42 @@ export interface ConformanceSurface {
    * defaults to {@link import('../verify/hash/hash.js').verifyHash}.
    */
   readonly verifyHash?: (bytes: Uint8Array, expected: string) => Promise<HashVerdict>;
+  /**
+   * Decide `ok` | `upgrade` | `refuse` for a remote `formatVersion` given the
+   * majors a build speaks. Drives the sync negotiate group; defaults to
+   * {@link import('../negotiate/negotiate.js').negotiate}.
+   */
+  readonly negotiate?: (local: FormatSupport, remote: FormatVersion) => NegotiationOutcome;
+  /**
+   * Verify a dual-signature release envelope against pinned trust material,
+   * returning a stable {@link SignatureVerdict}. Drives the async signature group
+   * (WebCrypto is async — see `runConformanceVectorsAsync`); defaults to
+   * {@link import('../verify/signature/signature.js').verifySignatureEnvelope}.
+   * The `wrong-issuer` negative lives here (SPEC §7).
+   */
+  readonly verifySignatureEnvelope?: (input: VerifySignatureInput) => Promise<SignatureVerdict>;
+  /**
+   * Decide whether a parsed, out-of-band-pinned trust-root document is trusted at
+   * `now`. Drives the sync trust group; defaults to
+   * {@link import('../verify/trust/trust.js').evaluateTrustRoot}. The `expired-root`
+   * negative lives here (SPEC §7).
+   */
+  readonly evaluateTrustRoot?: (doc: TrustRootDoc, pins: readonly TrustRootPin[], now: number) => TrustRootVerdict;
+  /**
+   * Verify an RFC 6962 consistency proof between two signed log heads, returning a
+   * stable {@link LogVerdict}. Drives the async log group (checkpoint signatures
+   * are Ed25519/WebCrypto); defaults to
+   * {@link import('../verify/log/log.js').verifyLogConsistency}. The `forked-log`
+   * negative lives here (SPEC §7).
+   */
+  readonly verifyLogConsistency?: (input: LogConsistencyInput) => Promise<LogVerdict>;
+  /**
+   * Decide the per-registry load gate for an authenticated revocation feed against
+   * the host cursor and `now`. Drives the sync freshness group; defaults to
+   * {@link import('../verify/freshness/freshness.js').evaluateFreshness}. The
+   * `stale-past-TTL feed` negative lives here (SPEC §7).
+   */
+  readonly evaluateFreshness?: (feed: RevocationFeed, cursor: Cursor, now: number) => FreshnessVerdict;
 }
 
 /** A manifest schema-validity vector: does the manifest satisfy the schema? */
@@ -232,6 +283,103 @@ export interface HashWireVector {
   /** The stable verdict a conforming `verifyHash` must return. */
   readonly reason: HashVerdict['reason'];
   readonly note?: string;
+}
+
+/**
+ * A format-version **negotiation** vector (SPEC §5, §6): given the majors a build
+ * `speaks` and a remote `formatVersion`, the `ok` | `upgrade` | `refuse` verdict
+ * a conforming {@link import('../negotiate/negotiate.js').negotiate} must return.
+ * Vectors are versioned by format major (SPEC §6) via {@link speaks}.
+ */
+export interface NegotiateVector {
+  readonly name: string;
+  /** The majors the negotiating build speaks; newest is its current major. */
+  readonly speaks: readonly number[];
+  /** The remote artifact's `major.minor` (or a deliberately malformed) version. */
+  readonly remote: FormatVersion;
+  /** The verdict a conforming negotiator must produce. */
+  readonly outcome: NegotiationOutcome;
+  readonly note?: string;
+}
+
+/**
+ * A dual-signature **envelope** conformance vector (docs/SPEC.md §4.2, §7; FR-15,
+ * P-E4). A frozen, recorded {@link VerifySignatureInput} — a real ECDSA-P256
+ * dual-signed envelope, the canonical release bytes it covers, and the pinned
+ * trust material — plus the stable {@link SignatureVerdictReason} a conforming
+ * verifier must return. Recorded once (signing is randomized; verification is
+ * not), so the fixture verifies deterministically. The load-bearing negative is
+ * `wrong issuer` — an envelope whose attested/allowlisted issuer does not hold
+ * (SPEC §7); a consumer whose runner "passes" it fails CI.
+ */
+export interface SignatureVector {
+  readonly name: string;
+  /** The frozen envelope + release bytes + pinned trust to verify. */
+  readonly input: VerifySignatureInput;
+  /** The stable verdict reason a conforming `verifySignatureEnvelope` must return. */
+  readonly reason: SignatureVerdictReason;
+  readonly note?: string;
+}
+
+/**
+ * A trust-root **evaluation** conformance vector (docs/SPEC.md §4.4, §7; FR-15,
+ * P-E4). A parsed, already-signature-verified {@link TrustRootDoc}, the operator's
+ * out-of-band pins, and `now`, paired with the exact {@link TrustRootVerdict} a
+ * conforming {@link import('../verify/trust/trust.js').evaluateTrustRoot} must
+ * produce. The load-bearing negative is `expired root` — a pinned root past its
+ * `notAfter` (SPEC §7). Grouped by the four cases the acceptance criteria name.
+ */
+export interface TrustRootVector {
+  readonly group: 'pinned-valid' | 'overlap' | 'unpinned' | 'expired';
+  readonly name: string;
+  /** The already-parsed, already-signature-verified trust-root document. */
+  readonly doc: TrustRootDoc;
+  /** The operator's out-of-band pins. */
+  readonly pins: readonly TrustRootPin[];
+  /** Caller-supplied clock, epoch milliseconds. */
+  readonly now: number;
+  /** The exact verdict `evaluateTrustRoot(doc, pins, now)` must produce. */
+  readonly expected: TrustRootVerdict;
+}
+
+/**
+ * A transparency-log **consistency** conformance vector (docs/SPEC.md §4.3, §7;
+ * FR-15, P-E4). A frozen, recorded {@link LogConsistencyInput} — two signed heads
+ * plus the RFC 6962 consistency proof between them — and the stable
+ * {@link LogVerdictReason} a conforming
+ * {@link import('../verify/log/log.js').verifyLogConsistency} must return. The
+ * load-bearing negative is `forked log`: two same-size heads signed by the same
+ * key over **different** roots (`consistency-proof-invalid`, SPEC §7).
+ */
+export interface LogConsistencyVector {
+  readonly name: string;
+  /** The frozen two signed heads + consistency proof + pinned log key. */
+  readonly input: LogConsistencyInput;
+  /** The stable verdict reason a conforming `verifyLogConsistency` must return. */
+  readonly reason: LogVerdictReason;
+  readonly note?: string;
+}
+
+/**
+ * A revocation-feed **freshness** conformance vector (docs/SPEC.md §4.3, §7;
+ * FR-15, P-E4). An already-authenticated {@link RevocationFeed}, the host
+ * {@link Cursor}, and `now`, paired with the exact {@link FreshnessVerdict} a
+ * conforming {@link import('../verify/freshness/freshness.js').evaluateFreshness}
+ * must produce. The load-bearing negative is `stale-past-TTL feed` — a feed past
+ * its TTL deadline fails closed, scoped to its own registry (SPEC §7). Grouped by
+ * the four cases the acceptance criteria name.
+ */
+export interface FreshnessVector {
+  readonly group: 'fresh' | 'stale' | 'multi-registry' | 'rollback';
+  readonly name: string;
+  /** The already-authenticated feed under evaluation. */
+  readonly feed: RevocationFeed;
+  /** The host's cursor for the feed's registry. */
+  readonly cursor: Cursor;
+  /** Caller-supplied clock, epoch milliseconds. */
+  readonly now: number;
+  /** The exact verdict `evaluateFreshness(feed, cursor, now)` must produce. */
+  readonly expected: FreshnessVerdict;
 }
 
 /** One vector's verdict, collected into a {@link ConformanceReport}. */

@@ -1,0 +1,670 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/GmbBundle",
+  "definitions": {
+    "GmbBundle": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version as `major.minor`. Minor is additive/back-compatible, major is breaking; the verifier speaks major `1`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "producedBy": {
+          "type": "string",
+          "description": "Identity of the registry that produced this bundle (e.g. `\"registry.gridmason.dev\"`). Provenance metadata carried for operators and audit — **not** a trust anchor: trust flows from the pinned  {@link  * GmbPayload.trustRoot } , never from this field."
+        },
+        "contentHash": {
+          "$ref": "#/definitions/MultihashString",
+          "description": "The bundle-level content hash: the multihash-tagged (`sha2-256:<hex>`) digest of the canonicalized  {@link  GmbPayload }  (`src/canon`, RFC-8785). Seals the whole archive — any tampering with the payload breaks this hash, which the verifier checks before it will look at anything inside. It is an integrity seal, not a signature: the cryptographic authorship/approval trust comes from the signed chain inside  {@link  payload } ."
+        },
+        "payload": {
+          "$ref": "#/definitions/GmbPayload",
+          "description": "The sealed, verifiable contents."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "producedBy",
+        "contentHash",
+        "payload"
+      ],
+      "additionalProperties": false,
+      "description": "A `.gmb` offline bundle (docs/SPEC.md §4.5). The signed, self-verifying archive an air-gapped host loads: a  {@link  GmbPayload }  plus the bundle-level content hash that seals it and the id of the registry that produced it. Consumed by  {@link  import ('../../verify/bundle/index.js').verifyOfflineBundle } ."
+    },
+    "MultihashString": {
+      "type": "string",
+      "description": "A multihash-tagged content hash: the algorithm prefix followed by the digest. Today only `sha2-256:<hex>` is produced and accepted; the template keeps the type honest about the in-band tag. This is a shape hint, not a validity proof — an arbitrary `sha2-256:` string still satisfies it, so untrusted values are validated by  {@link  verifyHash }  rather than by the type alone."
+    },
+    "GmbPayload": {
+      "type": "object",
+      "properties": {
+        "manifest": {
+          "$ref": "#/definitions/Manifest",
+          "description": "The widget/plugin manifest (§3.1) this bundle ships."
+        },
+        "release": {
+          "$ref": "#/definitions/ReleaseDoc",
+          "description": "The signed release document (§4.1): the artifact id plus the `{ path → hash }` map the signature envelope's subject binds. The offline chain re-derives its hash and matches it to the signed subject exactly as the online path does."
+        },
+        "envelope": {
+          "$ref": "#/definitions/SignatureEnvelope",
+          "description": "The detached dual-signature envelope (§4.2) over the canonicalized release. Its `logInclusion` names the bundled  {@link  logEntry }  — together they are the\n**embedded log-inclusion proof** the offline chain checks against a pinned checkpoint key, with no call to any log."
+        },
+        "logEntry": {
+          "$ref": "#/definitions/TransparencyLogEntry",
+          "description": "The transparency-log entry (§4.3) proving the release was logged — the inclusion proof, packed so the check runs offline. The verifier requires  {@link  envelope } 's `logInclusion` to name this exact entry."
+        },
+        "trustRoot": {
+          "$ref": "#/definitions/TrustRootDoc",
+          "description": "The trust-root document (§4.4) the release anchors to — packed so the chain has its issuer allowlist and root identifiers offline. It is **not** trusted for being here: the verifier believes it only when it matches an operator pin (a rotation-overlap document carries both outgoing and incoming roots per §4.4, so a single embedded document covers the relevant roots)."
+        },
+        "entry": {
+          "$ref": "#/definitions/GmbFile",
+          "description": "The ES-module entry that registers the custom element (`manifest.entry`)."
+        },
+        "chunks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GmbFile"
+          },
+          "description": "The remaining servable module chunks."
+        },
+        "schemas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GmbFile"
+          },
+          "description": "The JSON Schema documents (e.g. the widget's settings schema)."
+        },
+        "docs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GmbFile"
+          },
+          "description": "The documentation / guide assets shipped with the widget."
+        }
+      },
+      "required": [
+        "manifest",
+        "release",
+        "envelope",
+        "logEntry",
+        "trustRoot",
+        "entry",
+        "chunks",
+        "schemas",
+        "docs"
+      ],
+      "additionalProperties": false,
+      "description": "The verifiable payload of a `.gmb` — everything the bundle-level content hash covers. Split out from  {@link  GmbBundle }  so the hash has one precise, canonical subject: mutating **any** field here (a servable byte, the embedded proof, the trust root, the release map) changes the canonical bytes of this object and so breaks  {@link  GmbBundle.contentHash } . The signature/log chain then independently re-binds the release, envelope, log entry, and trust root — defence in depth, so even a producer who honestly recomputes the content hash over tampered material is still caught by the signed chain."
+    },
+    "Manifest": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version of this manifest as `major.minor`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Custom-element tag. MUST be publisher-prefixed, lowercase, and contain at least one hyphen (validated by `lintTag`)."
+        },
+        "kind": {
+          "$ref": "#/definitions/ManifestKind",
+          "description": "What this artifact is."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name."
+        },
+        "publisher": {
+          "type": "string",
+          "description": "Publisher namespace prefix; unique within one registry."
+        },
+        "version": {
+          "type": "string",
+          "description": "SemVer of this artifact.",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "requiresContext": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ManifestContextRequirement"
+          },
+          "description": "Context slots the widget needs the host page to supply, keyed by slot name."
+        },
+        "supportsPages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Page-type globs this widget may be placed on (e.g. `\"dashboards.*\"`)."
+        },
+        "size": {
+          "$ref": "#/definitions/ManifestSize",
+          "description": "Grid footprint constraints."
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Capability"
+          },
+          "description": "Declared capabilities. The SDK enforces `min(user permissions, declared)`; a capability increase between versions re-triggers registry review."
+        },
+        "props": {
+          "type": "string",
+          "description": "Path to the JSON Schema for this widget's user-facing settings."
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ManifestRequirement"
+          },
+          "description": "Dependency DAG edges; the registry rejects cycles at publish."
+        },
+        "sharedScope": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Import-map ranges this widget expects the host to satisfy at resolve time. Omitted = a fully self-contained module graph."
+        },
+        "entry": {
+          "type": "string",
+          "description": "ES-module entry that registers the custom element; content-hashed."
+        },
+        "thumbnail": {
+          "type": "string",
+          "description": "Path to a thumbnail asset."
+        },
+        "pageType": {
+          "$ref": "#/definitions/PageTypeDescriptor",
+          "description": "Present when `kind` is `page-type` (core §3)."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "tag",
+        "kind",
+        "name",
+        "publisher",
+        "version",
+        "entry"
+      ],
+      "additionalProperties": false,
+      "description": "A widget/plugin manifest. Required fields identify and load the artifact (`formatVersion`, `tag`, `kind`, `name`, `publisher`, `version`, `entry`); the rest describe placement, capabilities, and dependencies."
+    },
+    "ManifestKind": {
+      "type": "string",
+      "enum": [
+        "widget",
+        "plugin",
+        "page-type",
+        "layout"
+      ],
+      "description": "What a manifest describes."
+    },
+    "ManifestContextRequirement": {
+      "type": "object",
+      "properties": {
+        "recordType": {
+          "type": "string",
+          "description": "Domain record type the slot must carry (e.g. `\"customer\"`)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One entry in `requiresContext`: the shape of a single context slot the widget needs the host page to supply. The full context-type grammar lives in `src/types/context` (issue #7); the manifest only needs the record-type key."
+    },
+    "ManifestSize": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "$ref": "#/definitions/GridSize",
+          "description": "Footprint the host uses when first placing the widget."
+        },
+        "min": {
+          "$ref": "#/definitions/GridSize",
+          "description": "Smallest footprint the widget may be resized to."
+        },
+        "max": {
+          "$ref": "#/definitions/GridSize",
+          "description": "Largest footprint the widget may be resized to."
+        }
+      },
+      "required": [
+        "default"
+      ],
+      "additionalProperties": false,
+      "description": "Grid footprint constraints for a widget."
+    },
+    "GridSize": {
+      "type": "array",
+      "minItems": 2,
+      "items": [
+        {
+          "type": "number",
+          "title": "columns"
+        },
+        {
+          "type": "number",
+          "title": "rows"
+        }
+      ],
+      "maxItems": 2,
+      "description": "A widget's grid footprint as `[columns, rows]` cells."
+    },
+    "Capability": {
+      "type": "object",
+      "properties": {
+        "api": {
+          "$ref": "#/definitions/CapabilityApi",
+          "description": "One of the v1 apis (see `CAPABILITY_APIS`)."
+        },
+        "scope": {
+          "type": "string",
+          "description": "Colon-delimited scope path, or omitted for an unscoped capability."
+        }
+      },
+      "required": [
+        "api"
+      ],
+      "additionalProperties": false,
+      "description": "The object form of a capability as it appears in a manifest's `capabilities` array. The string form `<api>[:<scope>]` is what `parseCapability` reads and `formatCapability` writes."
+    },
+    "CapabilityApi": {
+      "type": "string",
+      "enum": [
+        "records.read",
+        "records.write",
+        "net",
+        "events"
+      ],
+      "description": "One of the v1 capability apis."
+    },
+    "ManifestRequirement": {
+      "type": "object",
+      "properties": {
+        "tag": {
+          "type": "string",
+          "description": "Publisher-prefixed tag of the required artifact."
+        },
+        "range": {
+          "type": "string",
+          "description": "SemVer range the host must satisfy at resolve time."
+        }
+      },
+      "required": [
+        "tag",
+        "range"
+      ],
+      "additionalProperties": false,
+      "description": "One edge of the dependency DAG; the registry rejects cycles at publish."
+    },
+    "PageTypeDescriptor": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ManifestContextRequirement"
+          },
+          "description": "Context slots this page type provides, keyed by slot name."
+        },
+        "default_layout": {
+          "type": "string",
+          "description": "Tag or path of the layout applied to new instances of this page type."
+        },
+        "locks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Slot ids the page type pins so user customization cannot move or remove them."
+        },
+        "allow_user_customization": {
+          "type": "boolean",
+          "description": "Whether end users may add, move, or remove widgets on this page type."
+        }
+      },
+      "required": [
+        "context"
+      ],
+      "additionalProperties": false,
+      "description": "The descriptor carried when `kind` is `page-type` (core §3): the context this page type declares to the widgets placed on it, its default layout, the slots it locks, and whether end users may customize it."
+    },
+    "ReleaseDoc": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version as `major.minor`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "artifact": {
+          "type": "string",
+          "description": "Publisher-prefixed, version-qualified artifact id, e.g. `acme-chart@2.3.1`."
+        },
+        "files": {
+          "$ref": "#/definitions/ReleaseHashMap",
+          "description": "Every servable path/URL mapped to the expected hash of its exact served bytes."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "artifact",
+        "files"
+      ],
+      "additionalProperties": false,
+      "description": "A signed release document (docs/SPEC.md §4.1) — the artifact identity plus the `{ url → content-hash }` map of every file the runtime may load. Its canonical bytes (JCS / RFC-8785) are what the signature envelope's `subject.releaseHash` covers, so tampering with any listed hash breaks the signature. `verifyRelease` returns  {@link  files }  as a `Map` only after the whole document is proven to hash to the signed subject."
+    },
+    "ReleaseHashMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/MultihashString"
+      },
+      "description": "The signed release document's file list (docs/SPEC.md §4.1): every path the runtime may load mapped to the expected hash of its exact served bytes. Consumed later by `verifyRelease` (FR-14) and by the dashboard Service Worker's per-URL check. `path` is the served URL/path key; the map is read-only because a release manifest is immutable once signed."
+    },
+    "SignatureEnvelope": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version as `major.minor`. Minor is additive/back-compatible, major is breaking. This module speaks major `1`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "subject": {
+          "$ref": "#/definitions/SignatureSubject",
+          "description": "The artifact and release-hash the signatures cover."
+        },
+        "publisherSig": {
+          "$ref": "#/definitions/PublisherSignature",
+          "description": "Publisher (authorship) signature — Sigstore keyless."
+        },
+        "registrySig": {
+          "$ref": "#/definitions/RegistryCountersignature",
+          "description": "Registry (approval) countersignature — present once review has passed."
+        },
+        "logInclusion": {
+          "$ref": "#/definitions/LogInclusion",
+          "description": "Transparency-log inclusion transport (verified elsewhere, FR-13)."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "subject",
+        "publisherSig",
+        "logInclusion"
+      ],
+      "additionalProperties": false,
+      "description": "The detached dual-signature envelope over a canonicalized release document (docs/SPEC.md §4.2). Consumed by  {@link  import ('../../verify/signature/index.js').verifySignatureEnvelope }  and, above it, by the `verifyRelease` orchestrator (FR-14)."
+    },
+    "SignatureSubject": {
+      "type": "object",
+      "properties": {
+        "artifact": {
+          "type": "string",
+          "description": "Publisher-prefixed, version-qualified artifact id, e.g. `acme-chart@2.3.1`."
+        },
+        "releaseHash": {
+          "$ref": "#/definitions/MultihashString",
+          "description": "Multihash-tagged content hash of the canonicalized release document (`sha2-256:<hex>`), the same encoding `src/verify/hash` produces."
+        }
+      },
+      "required": [
+        "artifact",
+        "releaseHash"
+      ],
+      "additionalProperties": false,
+      "description": "What the envelope is *about*: the exact artifact and the content hash of its canonicalized release document. The signatures cover this object (see  {@link  SignatureEnvelope } ); the verifier additionally re-derives the hash from the supplied release bytes so a matching signature over a lying `subject` is still refused."
+    },
+    "PublisherSignature": {
+      "type": "object",
+      "properties": {
+        "alg": {
+          "$ref": "#/definitions/SignatureAlg",
+          "description": "Signature algorithm; `ES256` at format `1.x`."
+        },
+        "cert": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the DER-encoded X.509 short-lived certificate."
+        },
+        "issuer": {
+          "type": "string",
+          "description": "OIDC issuer the publisher authenticated to (e.g. `https://accounts.google.com`). The trust anchor for the publisher side; the verifier requires it to equal the issuer the certificate attests and to be on the registry's issuer allowlist (recorded in the trust root, §4.4)."
+        },
+        "subjectClaims": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Identity claims the OIDC issuer asserted (e.g. `{ email: \"dev@acme.com\" }`), bound into the certificate's subject-alternative name. The verifier requires these to match the certificate."
+        },
+        "sig": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the raw ECDSA signature in IEEE-P1363 form (`r || s`, 64 bytes for P-256) over the canonical bytes of  {@link  SignatureSubject } ."
+        }
+      },
+      "required": [
+        "alg",
+        "cert",
+        "issuer",
+        "subjectClaims",
+        "sig"
+      ],
+      "additionalProperties": false,
+      "description": "The publisher (authorship) signature — Sigstore keyless. `cert` is a short-lived certificate binding a public key to an OIDC identity; the verifier extracts the issuer and identity **from the certificate**, so the `issuer`/`subjectClaims` mirrored here are convenience transport that must\n*match* the certificate — a mismatch is refused, never trusted."
+    },
+    "SignatureAlg": {
+      "type": "string",
+      "const": "ES256",
+      "description": "Signature algorithm identifier. Only `ES256` (ECDSA over NIST P-256 with SHA-256) is produced and accepted at format `1.x`; it is a string union rather than a bare `string` so the schema pins the accepted set and an unknown algorithm is a typed refusal, not a silent pass. Additional algorithms (e.g. `EdDSA`) are a future additive (minor) format bump."
+    },
+    "RegistryCountersignature": {
+      "type": "object",
+      "properties": {
+        "alg": {
+          "$ref": "#/definitions/SignatureAlg",
+          "description": "Signature algorithm; `ES256` at format `1.x`."
+        },
+        "cert": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the DER-encoded X.509 countersign certificate."
+        },
+        "sig": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the raw ECDSA signature in IEEE-P1363 form over the publisher signature's raw bytes (the countersigned value)."
+        }
+      },
+      "required": [
+        "alg",
+        "cert",
+        "sig"
+      ],
+      "additionalProperties": false,
+      "description": "The registry (approval) countersignature — applied only after registry review passes, with the countersign key held separately from review staff. It signs the publisher signature it approved, so approval is bound to that exact publisher signature. Optional on the wire: a published-but-not-yet-approved release has a `publisherSig` and no `registrySig`; the verifier refuses that with a distinct reason."
+    },
+    "LogInclusion": {
+      "type": "object",
+      "properties": {
+        "logId": {
+          "type": "string",
+          "description": "Identifier of the transparency log the entry lives in."
+        },
+        "index": {
+          "type": "number",
+          "description": "Zero-based leaf index of the entry."
+        },
+        "proof": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Merkle inclusion-proof hashes (base64), audited by the log-inclusion check."
+        }
+      },
+      "required": [
+        "logId",
+        "index",
+        "proof"
+      ],
+      "additionalProperties": false,
+      "description": "Transparency-log inclusion transport (§4.3). Carried in the envelope so the log-inclusion check (FR-13) has its inputs; **not** verified by `src/verify/signature`. Typed here to pin the wire shape."
+    },
+    "TransparencyLogEntry": {
+      "type": "object",
+      "properties": {
+        "logId": {
+          "type": "string",
+          "description": "Log identity — the hex SHA-256 of the log's public key. Names *which* log; the caller maps it to a pinned key. Non-load-bearing for the Merkle math.",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "index": {
+          "type": "number",
+          "description": "Zero-based leaf index of this entry within the tree of `inclusionProof.treeSize`."
+        },
+        "integratedTime": {
+          "type": "number",
+          "description": "Unix seconds at which the log integrated the entry. Carried, not verified here."
+        },
+        "canonicalBody": {
+          "type": "string",
+          "description": "The exact bytes that were logged as this leaf, base64. The leaf hash is `SHA-256(0x00 || canonicalBody)` (RFC 6962 leaf hashing).",
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        },
+        "inclusionProof": {
+          "$ref": "#/definitions/LogInclusionProof",
+          "description": "RFC 6962 audit path proving `canonicalBody` is the leaf at `index`."
+        },
+        "checkpoint": {
+          "type": "string",
+          "description": "The log's signed tree head as a c2sp.org/tlog-checkpoint signed note: `origin`, `treeSize`, and base64 root on their own lines, followed by a blank line and one or more `— <name> <base64>` signature lines. The verify lib checks the signature against the pinned log key before trusting the root."
+        }
+      },
+      "required": [
+        "logId",
+        "index",
+        "integratedTime",
+        "canonicalBody",
+        "inclusionProof",
+        "checkpoint"
+      ],
+      "additionalProperties": false,
+      "description": "A Sigstore/Rekor-compatible transparency-log entry (docs/SPEC.md §4.3). Proves the logged `canonicalBody` sits at leaf `index` of a log whose signed tree head is `checkpoint`."
+    },
+    "LogInclusionProof": {
+      "type": "object",
+      "properties": {
+        "treeSize": {
+          "type": "number",
+          "description": "Number of leaves in the tree this proof leads to the root of."
+        },
+        "rootHash": {
+          "type": "string",
+          "description": "The Merkle tree root at `treeSize`, lowercase hex. Advisory: the verify lib checks the recomputed root against the **signed checkpoint** root, and requires this field to agree with it (a self-consistent entry).",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "hashes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Sibling node hashes of the audit path, leaf-to-root, each a lowercase-hex SHA-256 digest. The array length is fixed by `index` and `treeSize` (RFC 6962); the verify lib enforces the hex/length of each element."
+        }
+      },
+      "required": [
+        "treeSize",
+        "rootHash",
+        "hashes"
+      ],
+      "additionalProperties": false,
+      "description": "An RFC 6962 inclusion proof: the Merkle audit path from a leaf up to the tree root at `treeSize`. `hashes` are the sibling node hashes, ordered leaf-to-root; the verify lib recomputes the root from the leaf and this path and compares it to the root the signed  {@link  TransparencyLogEntry.checkpoint }  commits to."
+    },
+    "TrustRootDoc": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version of this document as `major.minor`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "registryId": {
+          "type": "string",
+          "description": "Identity of the registry this document establishes roots for (e.g. `\"registry.gridmason.dev\"`)."
+        },
+        "countersignRoots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The registry's countersign root(s) — the roots that anchor its approval (`registrySig`) signatures. Ordered; opaque identifiers (a key id / cert / fingerprint) matched verbatim against the operator's pins. Normally one root; during a rotation overlap it lists **both** the outgoing and incoming roots so a host pinned to either still matches (see  {@link  crossSig } )."
+        },
+        "publisherCARoots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Publisher CA roots for the issued-cert authorship path (SPEC §4.4, optional). Absent when the registry only anchors authorship through the keyless OIDC path ( {@link  issuerAllowlist } )."
+        },
+        "issuerAllowlist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The OIDC issuer origins the registry accepts as authorship trust anchors (SPEC §4.2 — \"the OIDC issuer is the trust anchor for the publisher side\"). A publisher signature whose issuer is not on this list is not anchored. May be empty for a registry that uses only the issued-cert path."
+        },
+        "logPublicKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The transparency-log public keys (opaque encoded strings) a host pins log inclusion proofs against (SPEC §4.3). May be empty for a registry that does not operate a log."
+        },
+        "notBefore": {
+          "type": "integer",
+          "description": "Start of the document's validity window, in **epoch milliseconds**. A host whose `now` is before this instant refuses the document as not-yet-valid."
+        },
+        "notAfter": {
+          "type": "integer",
+          "description": "End of the document's validity window, in **epoch milliseconds**. A host whose `now` is past this instant refuses the document as expired. Must be `>=`  {@link  notBefore } ."
+        },
+        "crossSig": {
+          "type": "string",
+          "description": "The outgoing root's signature over this document, present only during a rotation overlap to bind the incoming root to the one it succeeds (SPEC §4.4). Absent outside a rotation. Ratified contract: a base64 ECDSA P-256 / SHA-256 signature (IEEE-P1363, 64 bytes) whose preimage is the RFC-8785 canonical bytes of this document with its own `crossSig` field removed, accepted when it verifies under any pinned countersign root key. This module carries the field through structurally; verifying it cryptographically is the signature primitive's job, composed in `verifyRelease` (via `verifyCrossSig`)."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "registryId",
+        "countersignRoots",
+        "issuerAllowlist",
+        "logPublicKeys",
+        "notBefore",
+        "notAfter"
+      ],
+      "additionalProperties": false,
+      "description": "A signed trust-root document for one registry (docs/SPEC.md §4.4). Every field is authored here and schema-generated (FR-5). A host receives this document already signature-verified and matches it against its out-of-band pins."
+    },
+    "GmbFile": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Served path/URL key, matching a key of the release document's `files` map."
+        },
+        "bytes": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the exact bytes served for  {@link  path } .",
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        }
+      },
+      "required": [
+        "path",
+        "bytes"
+      ],
+      "additionalProperties": false,
+      "description": "One servable file packed into a bundle: the exact bytes the host will serve for `path`, base64-encoded. `path` is the served URL/path key — the same key the release document's `files` map addresses, so a host pairs the verified `url → hash` map (from the verifier) with these bytes and runs the per-fetch `verifyChunk` check locally. The bytes are covered by the bundle-level  {@link  GmbBundle.contentHash } ; they are otherwise carried, not re-derived."
+    }
+  }
+}

@@ -12,10 +12,17 @@ import {
   contextVectors,
   devProxyRequestVectors,
   devProxyResponseVectors,
+  freshnessVectors,
+  hashWireVectors,
   layoutVectors,
+  logConsistencyVectors,
   manifestVectors,
+  negotiateVectors,
   runConformanceVectors,
+  runConformanceVectorsAsync,
+  signatureVectors,
   tagVectors,
+  trustRootVectors,
 } from '../../src/vectors/index.js';
 import type { ConformanceSurface } from '../../src/vectors/index.js';
 
@@ -113,6 +120,85 @@ describe('runConformanceVectors — catches divergence (SPEC §6)', () => {
     expect(failed.length).toBeGreaterThan(0);
     expect(failed.every((r) => r.group === 'dev-proxy-response')).toBe(true);
   });
+
+  it('a negotiator that always returns ok fails the upgrade/refuse vectors', () => {
+    const report = runConformanceVectors({ negotiate: () => 'ok' });
+    expect(report.ok).toBe(false);
+    const failed = report.results.filter((r) => !r.ok);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.every((r) => r.group === 'negotiate')).toBe(true);
+  });
+
+  it('a trust evaluator that always trusts fails the expired/unpinned vectors', () => {
+    const alwaysTrusted: ConformanceSurface['evaluateTrustRoot'] = () => ({
+      code: 'trusted',
+      ok: true,
+      registryId: 'anything',
+      matchedRoot: undefined,
+      matchedChannel: undefined,
+      overlap: false,
+      crossSig: undefined,
+    });
+    const report = runConformanceVectors({ evaluateTrustRoot: alwaysTrusted });
+    expect(report.ok).toBe(false);
+    const failed = report.results.filter((r) => !r.ok);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.every((r) => r.group === 'trust-root')).toBe(true);
+    // The expired-root negative (SPEC §7) is among the caught divergences.
+    expect(failed.some((r) => r.name.includes('expired'))).toBe(true);
+  });
+
+  it('a freshness evaluator that always says fresh fails the stale/rollback vectors', () => {
+    const alwaysFresh: ConformanceSurface['evaluateFreshness'] = () => ({
+      code: 'fresh',
+      ok: true,
+      registryId: 'anything',
+      blocked: [],
+      nextSeq: 0,
+    });
+    const report = runConformanceVectors({ evaluateFreshness: alwaysFresh });
+    expect(report.ok).toBe(false);
+    const failed = report.results.filter((r) => !r.ok);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.every((r) => r.group === 'freshness')).toBe(true);
+    // The stale-past-TTL negative (SPEC §7) is among the caught divergences.
+    expect(failed.some((r) => r.group === 'freshness' && r.name.includes('past the TTL'))).toBe(true);
+  });
+});
+
+// The crypto negatives are async — a broken WebCrypto-backed verifier must fail
+// the shared runner exactly as the sync ones do (SPEC §6, §7).
+describe('runConformanceVectorsAsync — catches divergence on the crypto negatives', () => {
+  it('the package passes the full corpus with the built-in defaults', async () => {
+    const report = await runConformanceVectorsAsync();
+    expect(report.ok, report.failures).toBe(true);
+    // The whole SPEC §7 negative set is present and green.
+    for (const group of ['hash-wire', 'signature', 'log-consistency', 'trust-root', 'freshness']) {
+      expect(report.results.some((r) => r.group === group), group).toBe(true);
+    }
+  });
+
+  it('a signature verifier that always says ok fails the wrong-issuer vectors', async () => {
+    const report = await runConformanceVectorsAsync({
+      verifySignatureEnvelope: async () => ({ reason: 'ok', ok: true }),
+    });
+    expect(report.ok).toBe(false);
+    const failed = report.results.filter((r) => !r.ok);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.every((r) => r.group === 'signature')).toBe(true);
+    expect(failed.some((r) => r.name.includes('issuer'))).toBe(true);
+  });
+
+  it('a log verifier that always says ok fails the forked-log vector', async () => {
+    const report = await runConformanceVectorsAsync({
+      verifyLogConsistency: async () => ({ reason: 'ok', ok: true }),
+    });
+    expect(report.ok).toBe(false);
+    const failed = report.results.filter((r) => !r.ok);
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.every((r) => r.group === 'log-consistency')).toBe(true);
+    expect(failed.some((r) => r.name.includes('forked'))).toBe(true);
+  });
 });
 
 describe('vector corpus shape', () => {
@@ -137,5 +223,26 @@ describe('vector corpus shape', () => {
     expect(devProxyResponseVectors.some((v) => !v.valid)).toBe(true);
     expect(layoutVectors.some((v) => !v.expected.readOnly)).toBe(true);
     expect(layoutVectors.some((v) => v.expected.readOnly)).toBe(true);
+    expect(negotiateVectors.some((v) => v.outcome === 'ok')).toBe(true);
+    expect(negotiateVectors.some((v) => v.outcome === 'upgrade')).toBe(true);
+    expect(negotiateVectors.some((v) => v.outcome === 'refuse')).toBe(true);
+    // The P-E4 crypto/verify groups — each carries a positive and its SPEC §7 negative.
+    expect(signatureVectors.some((v) => v.reason === 'ok')).toBe(true);
+    expect(signatureVectors.some((v) => v.reason !== 'ok')).toBe(true);
+    expect(trustRootVectors.some((v) => v.expected.ok)).toBe(true);
+    expect(trustRootVectors.some((v) => !v.expected.ok)).toBe(true);
+    expect(logConsistencyVectors.some((v) => v.reason === 'ok')).toBe(true);
+    expect(logConsistencyVectors.some((v) => v.reason !== 'ok')).toBe(true);
+    expect(freshnessVectors.some((v) => v.expected.ok)).toBe(true);
+    expect(freshnessVectors.some((v) => !v.expected.ok)).toBe(true);
+  });
+
+  it('every SPEC §7 negative is present as a published vector', () => {
+    // tampered hash | wrong issuer | expired root | forked log | stale-past-TTL feed
+    expect(hashWireVectors.some((v) => v.reason === 'hash-mismatch')).toBe(true);
+    expect(signatureVectors.some((v) => v.reason === 'publisher-issuer-not-allowlisted')).toBe(true);
+    expect(trustRootVectors.some((v) => v.group === 'expired' && v.expected.code === 'expired')).toBe(true);
+    expect(logConsistencyVectors.some((v) => v.reason === 'consistency-proof-invalid')).toBe(true);
+    expect(freshnessVectors.some((v) => v.group === 'stale' && v.expected.code === 'stale')).toBe(true);
   });
 });

@@ -24,6 +24,10 @@ import {
   TRUST_ROOT_SCHEMA_PATH,
   generateTrustRootSchema,
 } from './trust-root-schema.mjs';
+import {
+  GMB_BUNDLE_SCHEMA_PATH,
+  generateGmbBundleSchema,
+} from './bundle-schema.mjs';
 
 for (const [schemaPath, schema] of [
   [MANIFEST_SCHEMA_PATH, generateManifestSchema()],
@@ -31,6 +35,7 @@ for (const [schemaPath, schema] of [
   [REVOCATION_SCHEMA_PATH, generateRevocationSchema()],
   [LOG_ENTRY_SCHEMA_PATH, generateLogEntrySchema()],
   [TRUST_ROOT_SCHEMA_PATH, generateTrustRootSchema()],
+  [GMB_BUNDLE_SCHEMA_PATH, generateGmbBundleSchema()],
 ]) {
   mkdirSync(path.dirname(schemaPath), { recursive: true });
   writeFileSync(schemaPath, serializeSchema(schema));

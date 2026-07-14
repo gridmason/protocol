@@ -1,0 +1,8 @@
+{
+  "formatVersion": "1.0",
+  "countersignRoots": ["root-2025"],
+  "issuerAllowlist": [],
+  "logPublicKeys": [],
+  "notBefore": 1704067200000,
+  "notAfter": 1735689600000
+}

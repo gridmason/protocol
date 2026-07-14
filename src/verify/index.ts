@@ -5,8 +5,10 @@
  * no I/O. The security core of the platform: held at 100% coverage (GW-D20 gate,
  * see vitest.config.ts).
  *
- * Content hashing (§4.1) and revocation-feed freshness (§4.3) have landed;
- * signature/log/trust-root checks are populated by the rest of the P-E3 epic.
+ * Content hashing (§4.1), revocation-feed freshness (§4.3), and trust-root
+ * parsing/pinning/rotation (§4.4) have landed; the signature and log checks are
+ * populated by the rest of the P-E3 epic.
  */
 export * from './hash/index.js';
 export * from './freshness/index.js';
+export * from './trust/index.js';

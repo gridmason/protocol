@@ -8,6 +8,14 @@ import {
   generateManifestSchema,
   serializeSchema,
 } from './manifest-schema.mjs';
+import {
+  SIGNATURE_ENVELOPE_SCHEMA_PATH,
+  generateSignatureEnvelopeSchema,
+} from './signature-schema.mjs';
 
 mkdirSync(path.dirname(MANIFEST_SCHEMA_PATH), { recursive: true });
 writeFileSync(MANIFEST_SCHEMA_PATH, serializeSchema(generateManifestSchema()));
+writeFileSync(
+  SIGNATURE_ENVELOPE_SCHEMA_PATH,
+  serializeSchema(generateSignatureEnvelopeSchema()),
+);

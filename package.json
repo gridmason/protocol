@@ -43,7 +43,8 @@
       "types": "./dist/vectors/index.d.ts",
       "import": "./dist/vectors/index.js"
     },
-    "./schemas/manifest.json": "./schemas/manifest.schema.json"
+    "./schemas/manifest.json": "./schemas/manifest.schema.json",
+    "./schemas/signature-envelope.json": "./schemas/signature-envelope.schema.json"
   },
   "files": [
     "dist",

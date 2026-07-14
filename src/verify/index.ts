@@ -5,7 +5,8 @@
  * no I/O. The security core of the platform: held at 100% coverage (GW-D20 gate,
  * see vitest.config.ts).
  *
- * Content hashing (§4.1) has landed; signature/log/trust-root/freshness checks
- * are populated by the P-E3 epic.
+ * Content hashing (§4.1) and dual-signature envelope verification (§4.2) have
+ * landed; log/trust-root/freshness checks are populated by the rest of P-E3/P-E4.
  */
 export * from './hash/index.js';
+export * from './signature/index.js';

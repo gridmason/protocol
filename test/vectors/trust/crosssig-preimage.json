@@ -1,0 +1,38 @@
+{
+  "description": "crossSig preimage = RFC-8785 canonical bytes of the trust-root document with its own crossSig field removed, verified under a pinned countersign root key (ECDSA P-256 / SHA-256). `valid` verifies; `mutatedByte` is the same document with one byte of the signed body changed and the same crossSig, so it must fail.",
+  "countersignRootSpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAENToMk5D1ZYkHUFjeRHOP7d2FcbYgFgHWmfbk6qgHL6Wl770k+SNnkfaihzg9UmJ7reUhORn4FcgqcIUnhkndLA==",
+  "valid": {
+    "formatVersion": "1.0",
+    "registryId": "registry.gridmason.dev",
+    "countersignRoots": [
+      "root-2024",
+      "root-2025"
+    ],
+    "issuerAllowlist": [
+      "https://accounts.google.com"
+    ],
+    "logPublicKeys": [
+      "ed25519:log-key"
+    ],
+    "notBefore": 1704067200000,
+    "notAfter": 1735689600000,
+    "crossSig": "nPROSNzWtXa0Jr64KQ9HKP0IEuP++un/t5diYvFVWcYg/m1YhWebXGHeVIBCRcj+Pu16ZDUmVE3jXvdA6Gdylg=="
+  },
+  "mutatedByte": {
+    "formatVersion": "1.0",
+    "registryId": "registry.gridmason.deb",
+    "countersignRoots": [
+      "root-2024",
+      "root-2025"
+    ],
+    "issuerAllowlist": [
+      "https://accounts.google.com"
+    ],
+    "logPublicKeys": [
+      "ed25519:log-key"
+    ],
+    "notBefore": 1704067200000,
+    "notAfter": 1735689600000,
+    "crossSig": "nPROSNzWtXa0Jr64KQ9HKP0IEuP++un/t5diYvFVWcYg/m1YhWebXGHeVIBCRcj+Pu16ZDUmVE3jXvdA6Gdylg=="
+  }
+}

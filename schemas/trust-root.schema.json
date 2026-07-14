@@ -52,7 +52,7 @@
         },
         "crossSig": {
           "type": "string",
-          "description": "The outgoing root's signature over this document, present only during a rotation overlap to bind the incoming root to the one it succeeds (SPEC §4.4). Absent outside a rotation. This module carries it through structurally; verifying it cryptographically is the signature primitive's job, composed in `verifyRelease` (#20)."
+          "description": "The outgoing root's signature over this document, present only during a rotation overlap to bind the incoming root to the one it succeeds (SPEC §4.4). Absent outside a rotation. Ratified contract: a base64 ECDSA P-256 / SHA-256 signature (IEEE-P1363, 64 bytes) whose preimage is the RFC-8785 canonical bytes of this document with its own `crossSig` field removed, accepted when it verifies under any pinned countersign root key. This module carries the field through structurally; verifying it cryptographically is the signature primitive's job, composed in `verifyRelease` (via `verifyCrossSig`)."
         }
       },
       "required": [

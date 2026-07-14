@@ -25,7 +25,12 @@
  * pinned to it is refused until it re-pins. This module models the document shape
  * and the pin/overlap/validity decision only; **cryptographic** verification of
  * `crossSig` (that the outgoing root really authorized the incoming one) needs a
- * signature primitive and composes in the `verifyRelease` orchestrator (#20).
+ * signature primitive and composes in the `verifyRelease` orchestrator
+ * ({@link import('../../verify/release/crosssig.js').verifyCrossSig}). Its ratified
+ * contract (SPEC §4.4): the signed preimage is the **RFC-8785 canonical bytes of
+ * this document with its own `crossSig` field removed**, and the signature is
+ * accepted when it verifies (WebCrypto ECDSA P-256) under **any** of the operator's
+ * pinned countersign root keys.
  *
  * Timestamps: {@link TrustRootDoc.notBefore} / {@link TrustRootDoc.notAfter} are
  * **epoch milliseconds** — the same clock the caller passes as `now` (SPEC §5;
@@ -90,9 +95,12 @@ export interface TrustRootDoc {
   /**
    * The outgoing root's signature over this document, present only during a
    * rotation overlap to bind the incoming root to the one it succeeds (SPEC §4.4).
-   * Absent outside a rotation. This module carries it through structurally;
-   * verifying it cryptographically is the signature primitive's job, composed in
-   * `verifyRelease` (#20).
+   * Absent outside a rotation. Ratified contract: a base64 ECDSA P-256 / SHA-256
+   * signature (IEEE-P1363, 64 bytes) whose preimage is the RFC-8785 canonical
+   * bytes of this document with its own `crossSig` field removed, accepted when it
+   * verifies under any pinned countersign root key. This module carries the field
+   * through structurally; verifying it cryptographically is the signature
+   * primitive's job, composed in `verifyRelease` (via `verifyCrossSig`).
    */
   crossSig?: string;
 }

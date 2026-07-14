@@ -3,6 +3,14 @@
   "version": "0.0.2",
   "description": "Gridmason contracts + verification library: the types, wire formats, and pure verify core every host, CLI, and registry meet on.",
   "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gridmason/protocol.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gridmason/protocol/issues"
+  },
+  "homepage": "https://github.com/gridmason/protocol#readme",
   "type": "module",
   "sideEffects": false,
   "engines": {

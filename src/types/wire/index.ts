@@ -22,7 +22,9 @@ export type {
   Cursor,
   RevocationEntry,
   RevocationFeed,
+  RevocationFeedSignature,
   RevocationSeverity,
+  SignedRevocationFeed,
 } from './revocation.js';
 export type { LogInclusionProof, TransparencyLogEntry } from './log-entry.js';
 export type { TrustRootDoc } from './trust-root.js';

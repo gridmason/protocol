@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/SignedRevocationFeed",
+  "definitions": {
+    "SignedRevocationFeed": {
+      "type": "object",
+      "properties": {
+        "feed": {
+          "$ref": "#/definitions/RevocationFeed",
+          "description": "The revocation & kill feed the signature covers."
+        },
+        "signature": {
+          "$ref": "#/definitions/RevocationFeedSignature",
+          "description": "Detached registry signature over `canonicalize(feed)`."
+        }
+      },
+      "required": [
+        "feed",
+        "signature"
+      ],
+      "additionalProperties": false,
+      "description": "A served revocation & kill feed plus its detached registry signature (docs/SPEC.md §4.3). This is the document a host fetches from a registry; every field is untrusted input until  {@link  import ('../../verify/revocation/index.js').verifyRevocationFeed }  authenticates the signature against the pinned countersign roots. Only then is `feed` passed to  {@link  import ('../../verify/freshness/index.js').evaluateFreshness } ."
+    },
+    "RevocationFeed": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "string",
+          "description": "Wire-format version of this feed as `major.minor`.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "registryId": {
+          "type": "string",
+          "description": "Identity of the registry that issued this feed (e.g. `\"registry.gridmason.dev\"`)."
+        },
+        "seq": {
+          "type": "integer",
+          "description": "Monotonic feed version. Increases with every feed the registry publishes; a host rejects a feed whose `seq` is below its stored cursor as a rollback."
+        },
+        "issuedAt": {
+          "type": "integer",
+          "description": "When this feed was issued, in **epoch milliseconds** (same clock as `now`). The registry's TTL window is `issuedAt + ttlSeconds * 1000`."
+        },
+        "ttlSeconds": {
+          "type": "integer",
+          "description": "Freshness window in **seconds** from `issuedAt`. Once `now` is past `issuedAt + ttlSeconds * 1000` the feed is stale and the host must re-check before loading this registry's remotes (fail-closed, scoped to this registry only)."
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RevocationEntry"
+          },
+          "description": "The revoked/killed artifacts. An empty list is a valid \"nothing revoked\" feed."
+        }
+      },
+      "required": [
+        "formatVersion",
+        "registryId",
+        "seq",
+        "issuedAt",
+        "ttlSeconds",
+        "entries"
+      ],
+      "additionalProperties": false,
+      "description": "A signed revocation & kill feed for one registry (docs/SPEC.md §4.3). Every field is authored here and schema-generated (FR-5); a host receives this document already signature-verified and passes it to `evaluateFreshness`."
+    },
+    "RevocationEntry": {
+      "type": "object",
+      "properties": {
+        "artifact": {
+          "type": "string",
+          "description": "The artifact this entry acts on: a publisher-prefixed tag, optionally version-qualified (e.g. `\"acme-chart@1.2.3\"`), matched verbatim against the artifact ids a host is about to load. Matching is exact-string; this module does not interpret ranges."
+        },
+        "state": {
+          "$ref": "#/definitions/ArtifactState",
+          "description": "Whether the artifact is revoked (block new loads) or killed (also unload)."
+        },
+        "severity": {
+          "$ref": "#/definitions/RevocationSeverity",
+          "description": "Advisory severity for host triage; does not affect the load decision."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Human-readable justification (advisory, not a stable enum)."
+        }
+      },
+      "required": [
+        "artifact",
+        "state",
+        "severity",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "description": "One artifact a registry has revoked or killed."
+    },
+    "ArtifactState": {
+      "type": "string",
+      "enum": [
+        "revoked",
+        "killed"
+      ],
+      "description": "What a registry has done to an artifact.\n\n- `revoked` — withdraw the artifact: block **new** loads. Instances already   running are left alone.\n- `killed`  — kill switch: block new loads **and** force-unload any running   instance. Strictly more severe than `revoked`.\n\nBoth states block loading, so both appear in a fresh verdict's blocked list; the state is carried through so a host can additionally unload the `killed` ones."
+    },
+    "RevocationSeverity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Operator-facing severity of a revocation/kill entry, low to high. Advisory triage metadata (how a host prioritizes surfacing the event) — it does **not** change the load decision: any listed artifact is blocked whatever its severity."
+    },
+    "RevocationFeedSignature": {
+      "type": "object",
+      "properties": {
+        "alg": {
+          "$ref": "#/definitions/SignatureAlg",
+          "description": "Signature algorithm; `ES256` at format `1.x`."
+        },
+        "cert": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the DER-encoded X.509 countersign certificate."
+        },
+        "sig": {
+          "type": "string",
+          "description": "Base64 (standard alphabet) of the raw ECDSA signature in IEEE-P1363 form (`r || s`, 64 bytes for P-256) over the canonical bytes of  {@link  RevocationFeed } ."
+        }
+      },
+      "required": [
+        "alg",
+        "cert",
+        "sig"
+      ],
+      "additionalProperties": false,
+      "description": "The detached registry signature that wraps a served feed (docs/SPEC.md §4.3). ECDSA P-256 / SHA-256 (`ES256`, IEEE-P1363 form) over `canonicalize(feed)`, produced with the **same countersign key** the registry uses to approve releases — so a host pins one countersign root and authenticates both the release countersignature and this feed against it. Field conventions match the registry countersignature in  {@link  import ('./signature.js').RegistryCountersignature } ."
+    },
+    "SignatureAlg": {
+      "type": "string",
+      "const": "ES256",
+      "description": "Signature algorithm identifier. Only `ES256` (ECDSA over NIST P-256 with SHA-256) is produced and accepted at format `1.x`; it is a string union rather than a bare `string` so the schema pins the accepted set and an unknown algorithm is a typed refusal, not a silent pass. Additional algorithms (e.g. `EdDSA`) are a future additive (minor) format bump."
+    }
+  }
+}

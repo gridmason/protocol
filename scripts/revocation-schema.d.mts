@@ -5,4 +5,6 @@
 import type { JsonSchema } from './manifest-schema.d.mts';
 
 export declare const REVOCATION_SCHEMA_PATH: string;
+export declare const SIGNED_REVOCATION_SCHEMA_PATH: string;
 export declare function generateRevocationSchema(): JsonSchema;
+export declare function generateSignedRevocationSchema(): JsonSchema;

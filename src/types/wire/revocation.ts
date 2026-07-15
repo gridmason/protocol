@@ -18,7 +18,14 @@
  * an integer that increases with every feed a registry publishes; a feed whose
  * `seq` is below the host's cursor is a rollback (an old feed replayed) and is
  * rejected regardless of its TTL.
+ *
+ * The feed is served wrapped in a detached registry signature ({@link
+ * SignedRevocationFeed}); a host authenticates that wrapper with
+ * {@link import('../../verify/revocation/index.js').verifyRevocationFeed} before
+ * handing the `feed` to `evaluateFreshness`.
  */
+
+import type { SignatureAlg } from './signature.js';
 
 /**
  * What a registry has done to an artifact.
@@ -113,4 +120,40 @@ export interface Cursor {
    * @asType integer
    */
   seq: number;
+}
+
+/**
+ * The detached registry signature that wraps a served feed (docs/SPEC.md §4.3).
+ * ECDSA P-256 / SHA-256 (`ES256`, IEEE-P1363 form) over `canonicalize(feed)`,
+ * produced with the **same countersign key** the registry uses to approve
+ * releases — so a host pins one countersign root and authenticates both the
+ * release countersignature and this feed against it. Field conventions match the
+ * registry countersignature in {@link import('./signature.js').RegistryCountersignature}.
+ */
+export interface RevocationFeedSignature {
+  /** Signature algorithm; `ES256` at format `1.x`. */
+  alg: SignatureAlg;
+  /** Base64 (standard alphabet) of the DER-encoded X.509 countersign certificate. */
+  cert: string;
+  /**
+   * Base64 (standard alphabet) of the raw ECDSA signature in IEEE-P1363 form
+   * (`r || s`, 64 bytes for P-256) over the canonical bytes of {@link RevocationFeed}.
+   */
+  sig: string;
+}
+
+/**
+ * A served revocation & kill feed plus its detached registry signature (docs/SPEC.md
+ * §4.3). This is the document a host fetches from a registry; every field is
+ * untrusted input until
+ * {@link import('../../verify/revocation/index.js').verifyRevocationFeed}
+ * authenticates the signature against the pinned countersign roots. Only then is
+ * `feed` passed to
+ * {@link import('../../verify/freshness/index.js').evaluateFreshness}.
+ */
+export interface SignedRevocationFeed {
+  /** The revocation & kill feed the signature covers. */
+  feed: RevocationFeed;
+  /** Detached registry signature over `canonicalize(feed)`. */
+  signature: RevocationFeedSignature;
 }

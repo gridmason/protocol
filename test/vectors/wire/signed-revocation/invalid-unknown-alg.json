@@ -1,0 +1,15 @@
+{
+  "feed": {
+    "formatVersion": "1.0",
+    "registryId": "registry.gridmason.dev",
+    "seq": 8,
+    "issuedAt": 1704067200000,
+    "ttlSeconds": 3600,
+    "entries": []
+  },
+  "signature": {
+    "alg": "RS256",
+    "cert": "MIIBQZ2NvdW50ZXJzaWduLWNlcnQ=",
+    "sig": "c2lnbmF0dXJlLW92ZXItY2Fub25pY2FsaXplLWZlZWQ="
+  }
+}

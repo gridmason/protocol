@@ -14,7 +14,9 @@ import {
 } from './signature-schema.mjs';
 import {
   REVOCATION_SCHEMA_PATH,
+  SIGNED_REVOCATION_SCHEMA_PATH,
   generateRevocationSchema,
+  generateSignedRevocationSchema,
 } from './revocation-schema.mjs';
 import {
   LOG_ENTRY_SCHEMA_PATH,
@@ -39,6 +41,7 @@ for (const [schemaPath, schema] of [
   [MANIFEST_SCHEMA_PATH, generateManifestSchema()],
   [SIGNATURE_ENVELOPE_SCHEMA_PATH, generateSignatureEnvelopeSchema()],
   [REVOCATION_SCHEMA_PATH, generateRevocationSchema()],
+  [SIGNED_REVOCATION_SCHEMA_PATH, generateSignedRevocationSchema()],
   [LOG_ENTRY_SCHEMA_PATH, generateLogEntrySchema()],
   [TRUST_ROOT_SCHEMA_PATH, generateTrustRootSchema()],
   [GMB_BUNDLE_SCHEMA_PATH, generateGmbBundleSchema()],

@@ -46,6 +46,7 @@
     "./schemas/manifest.json": "./schemas/manifest.schema.json",
     "./schemas/signature-envelope.json": "./schemas/signature-envelope.schema.json",
     "./schemas/revocation-feed.json": "./schemas/revocation-feed.schema.json",
+    "./schemas/signed-revocation-feed.json": "./schemas/signed-revocation-feed.schema.json",
     "./schemas/log-entry.json": "./schemas/log-entry.schema.json",
     "./schemas/trust-root.json": "./schemas/trust-root.schema.json",
     "./schemas/gmb-bundle.json": "./schemas/gmb-bundle.schema.json",

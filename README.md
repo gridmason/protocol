@@ -2,6 +2,90 @@
 
 `@gridmason/protocol` — Gridmason contract types (widget manifest, page contexts, LayoutDoc) + signature / transparency-log / revocation-feed / trust-root formats + the public verification library. Everything else pins it (M0). Public OSS (AGPL-3.0). Engineering spec: `docs/SPEC.md` · Build plan: `docs/specs/protocol-v0/spec.md`.
 
+## Install
+
+```bash
+npm install @gridmason/protocol
+```
+
+Requires **Node.js >= 22**. The package ships ESM only (`"type": "module"`) with
+generated type declarations, and carries **zero runtime dependencies** — signature
+and hash math run on WebCrypto, so it is isomorphic across Node and the browser.
+
+Each capability is a separate subpath export, so import only what you need — e.g.
+`@gridmason/protocol/verify` for the verification core or `@gridmason/protocol/types`
+for the contract types. See [Exports](#exports) below.
+
+## Quickstart
+
+The headline is the **verification library** (`@gridmason/protocol/verify`): the
+pure, isomorphic decision a host runs before it loads a widget release.
+`verifyRelease` composes the whole chain — trust-root pinning, the dual-signature
+envelope (publisher authorship + registry approval), and transparency-log
+inclusion — and returns the enforceable `url → hash` map on success or a single
+stable reason on the first failure. It fetches nothing and holds no key: every
+input is caller-supplied (the release document, envelope, trust-root document and
+log entry come from your registry; the pins, CA / countersign roots, log
+checkpoint key and clock are your operator's out-of-band material).
+
+```ts
+import { verifyRelease, verifyChunk } from '@gridmason/protocol/verify';
+import type { VerifyReleaseInput } from '@gridmason/protocol/verify';
+
+const input: VerifyReleaseInput = {
+  release,          // ReleaseDoc: artifact id + { url → content-hash } map
+  envelope,         // SignatureEnvelope: detached dual signature over the release
+  trustRoot,        // untrusted, network-delivered trust-root document
+  pins,             // your out-of-band pins that authorize that document
+  publisherCARoots, // pinned publisher CA root keys (SPKI DER)
+  countersignRoots, // pinned registry countersign root keys (SPKI DER)
+  logEntry,         // the transparency-log entry proving the release was logged
+  logPublicKey,     // pinned log checkpoint key the inclusion proof is checked against
+  now: Date.now(),  // caller-supplied clock (keeps the lib pure)
+};
+
+const result = await verifyRelease(input);
+if (result.ok) {
+  // result.urlHashes: Map<string, MultihashString> — the Service Worker's
+  // enforcement table. result.issuer / result.subject are the verified identity.
+  for (const [url, hash] of result.urlHashes) {
+    console.log(`${url} verified, signed by ${result.issuer}`);
+  }
+} else {
+  // A single stable reason — never an input-derived identifier (SPEC §7).
+  console.error(`refused to load: ${result.reason}`);
+}
+```
+
+At runtime, gate every fetched file against its verified hash with `verifyChunk`
+(the Service-Worker per-fetch check), passing an entry from the `urlHashes` map:
+
+```ts
+const expected = result.urlHashes.get(url);
+if (!expected || !(await verifyChunk(bytes, expected))) {
+  // reject the response — the bytes do not match the signed hash
+}
+```
+
+Both are `async` because the hash and signature primitives are WebCrypto. For a
+runnable end-to-end reference — including how to construct each input — see the
+recorded fixtures behind the [conformance vectors](#conformance-vectors) below.
+
+## Exports
+
+Each subpath is an independent package export; the root `@gridmason/protocol`
+re-exports `types`, `canon`, `verify`, and `negotiate` for convenience.
+
+| Import | What it is |
+|---|---|
+| `@gridmason/protocol` | Convenience barrel re-exporting the `types`, `canon`, `verify`, and `negotiate` surfaces. |
+| `@gridmason/protocol/types` | Contract types + guards: widget/plugin manifest, typed page contexts, `LayoutDoc` + migrators, and the signature / log / revocation-feed / trust-root wire formats. |
+| `@gridmason/protocol/canon` | Deterministic JCS / RFC-8785 canonicalization (`canonicalize`) — the exact bytes that get hashed and signed. |
+| `@gridmason/protocol/verify` | The pure verification library: content hashing, dual-signature envelope, transparency-log inclusion/consistency, trust-root pinning/rotation, revocation-feed freshness, offline `.gmb` bundles, and the `verifyRelease` / `verifyChunk` orchestrators. |
+| `@gridmason/protocol/negotiate` | Format-version handshake: `negotiate(local, remote)` → `'ok' \| 'upgrade' \| 'refuse'`, plus `PROTOCOL_FORMAT_SUPPORT`. |
+| `@gridmason/protocol/vectors` | The shared conformance-vector corpus + runners (`runConformanceVectors`, `runConformanceVectorsAsync`) every consumer runs in its own CI. |
+| `@gridmason/protocol/schemas/*` | The generated JSON Schemas for each wire format (`manifest.json`, `signature-envelope.json`, `revocation-feed.json`, `signed-revocation-feed.json`, `log-entry.json`, `trust-root.json`, `gmb-bundle.json`, `gate-snapshot.json`, `import-map-fragment.json`). |
+
 ## Conformance vectors
 
 `@gridmason/protocol` ships the **type conformance vectors** for its Phase A
